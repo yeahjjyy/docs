@@ -17,12 +17,11 @@
             "group": "Get Started",
             "pages": [
               "index",
-              "quickstart",
               "authentication"
             ]
           },
           {
-            "group": "Essentials",
+            "group": "User Endpoint",
             "pages": [
               "essentials/markdown",
               "essentials/code",
