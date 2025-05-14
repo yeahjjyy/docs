@@ -1,37 +1,96 @@
 ---
-title: 'Code Blocks'
-description: 'Display inline code and code blocks'
-icon: 'code'
+title: 'Get User Last Tweets'
+description: 'Retrieves the most recent tweets from a specific Twitter user'
+icon: 'message'
 ---
 
-## Basic
+## Endpoint Overview
 
-### Inline Code
+Get the most recent tweets from a specific Twitter user using their username or user ID.
 
-To denote a `word` or `phrase` as code, enclose it in backticks (`).
+**Endpoint URL:** `GET https://api.twitterapi.io/twitter/user/tweets`
 
-```
-To denote a `word` or `phrase` as code, enclose it in backticks (`).
-```
+## Request Parameters
 
-### Code Block
+| Parameter | Type   | Required | Description                                           |
+| --------- | ------ | -------- | ----------------------------------------------------- |
+| userName  | string | Yes*     | Twitter username (without @)                          |
+| userId    | string | Yes*     | Twitter user ID number                                |
+| count     | number | No       | Number of tweets to return (default: 20, max: 100)    |
+| includeReplies | boolean | No | Include replies in the result (default: false)        |
+| includeRetweets | boolean | No | Include retweets in the result (default: false)      |
 
-Use [fenced code blocks](https://www.markdownguide.org/extended-syntax/#fenced-code-blocks) by enclosing code in three backticks and follow the leading ticks with the programming language of your snippet to get syntax highlighting. Optionally, you can also write the name of your code after the programming language.
+*At least one of userName or userId must be provided
 
-```java HelloWorld.java
-class HelloWorld {
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
-    }
+## Response Format
+
+```json
+{
+  "tweets": [
+    {
+      "id": "1234567890123456789",
+      "text": "This is a tweet from the user",
+      "created_at": "2023-05-20T15:30:45.000Z",
+      "retweet_count": 150,
+      "like_count": 1200,
+      "reply_count": 45,
+      "quote_count": 30,
+      "source": "Twitter Web App",
+      "entities": {
+        "hashtags": [],
+        "urls": [],
+        "mentions": []
+      },
+      "is_retweet": false,
+      "is_reply": false
+    },
+    // Additional tweets...
+  ],
+  "meta": {
+    "result_count": 20,
+    "oldest_id": "1234567890123456700",
+    "newest_id": "1234567890123456789"
+  }
 }
 ```
 
-````md
-```java HelloWorld.java
-class HelloWorld {
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
-    }
-}
+## Code Examples
+
+### cURL
+
+```bash
+curl --location 'https://api.twitterapi.io/twitter/user/tweets?userName=elonmusk&count=10' \
+--header 'x-api-key: my_test_xxxxx'
 ```
-````
+
+### Python
+
+```python
+import requests
+
+url = 'https://api.twitterapi.io/twitter/user/tweets'
+params = {
+    'userName': 'elonmusk',
+    'count': 10,
+    'includeReplies': False
+}
+headers = {'x-api-key': 'my_test_xxxxx'}
+response = requests.get(url, params=params, headers=headers)
+print(response.json())
+```
+
+### JavaScript
+
+```javascript
+const options = {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'my_test_xxxxx'
+  }
+};
+
+fetch('https://api.twitterapi.io/twitter/user/tweets?userName=elonmusk&count=10', options)
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```

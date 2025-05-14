@@ -1,110 +1,125 @@
 ---
-title: Reusable Snippets
-description: Reusable, custom snippets to keep content in sync
-icon: 'recycle'
+title: 'Batch Get User Info By UserIds'
+description: 'Retrieves information about multiple Twitter users in a single request'
+icon: 'users'
 ---
 
-import SnippetIntro from '/snippets/snippet-intro.mdx';
+## Endpoint Overview
 
-<SnippetIntro />
+Retrieve information about multiple Twitter users using a batch request with user IDs.
 
-## Creating a custom snippet
+**Endpoint URL:** `GET https://api.twitterapi.io/twitter/user/batch`
 
-**Pre-condition**: You must create your snippet file in the `snippets` directory.
+## Request Parameters
 
-<Note>
-  Any page in the `snippets` directory will be treated as a snippet and will not
-  be rendered into a standalone page. If you want to create a standalone page
-  from the snippet, import the snippet into another file and call it as a
-  component.
-</Note>
+| Parameter  | Type     | Required | Description                                                   |
+| ---------- | -------- | -------- | ------------------------------------------------------------- |
+| userIds    | string[] | Yes      | Comma-separated list of Twitter user IDs (max: 100 user IDs)  |
+| includeEntities | boolean | No    | Include user entities in response (default: false)           |
 
-### Default export
+## Response Format
 
-1. Add content to your snippet file that you want to re-use across multiple
-   locations. Optionally, you can add variables that can be filled in via props
-   when you import the snippet.
-
-```mdx snippets/my-snippet.mdx
-Hello world! This is my content I want to reuse across pages. My keyword of the
-day is {word}.
+```json
+{
+  "users": [
+    {
+      "id": "44196397",
+      "name": "Elon Musk",
+      "username": "elonmusk",
+      "bio": "Technoking of Tesla, Imperator of Mars",
+      "followers_count": 169800000,
+      "following_count": 150,
+      "tweet_count": 34500,
+      "listed_count": 120500,
+      "created_at": "2009-06-02T20:12:29.000Z",
+      "profile_image_url": "https://pbs.twimg.com/profile_images/1234567890/elon_musk_normal.jpg",
+      "verified": true,
+      "location": "Mars & Earth"
+    },
+    {
+      "id": "783214",
+      "name": "Twitter",
+      "username": "Twitter",
+      "bio": "What's happening?!",
+      "followers_count": 62400000,
+      "following_count": 0,
+      "tweet_count": 14900,
+      "listed_count": 91700,
+      "created_at": "2007-02-20T14:35:54.000Z",
+      "profile_image_url": "https://pbs.twimg.com/profile_images/1234567891/twitter_logo_normal.jpg",
+      "verified": true,
+      "location": "everywhere"
+    }
+    // Additional users...
+  ],
+  "meta": {
+    "result_count": 2
+  }
+}
 ```
 
-<Warning>
-  The content that you want to reuse must be inside the `snippets` directory in
-  order for the import to work.
-</Warning>
+## Code Examples
 
-2. Import the snippet into your destination file.
+### cURL
 
-```mdx destination-file.mdx
----
-title: My title
-description: My Description
----
-
-import MySnippet from '/snippets/path/to/my-snippet.mdx';
-
-## Header
-
-Lorem impsum dolor sit amet.
-
-<MySnippet word="bananas" />
+```bash
+curl --location 'https://api.twitterapi.io/twitter/user/batch?userIds=44196397,783214' \
+--header 'x-api-key: my_test_xxxxx'
 ```
 
-### Reusable variables
+### Python
 
-1. Export a variable from your snippet file:
+```python
+import requests
 
-```mdx snippets/path/to/custom-variables.mdx
-export const myName = 'my name';
-
-export const myObject = { fruit: 'strawberries' };
+url = 'https://api.twitterapi.io/twitter/user/batch'
+params = {
+    'userIds': '44196397,783214,6253282'
+}
+headers = {'x-api-key': 'my_test_xxxxx'}
+response = requests.get(url, params=params, headers=headers)
+print(response.json())
 ```
 
-2. Import the snippet from your destination file and use the variable:
+### JavaScript
 
-```mdx destination-file.mdx
----
-title: My title
-description: My Description
----
+```javascript
+const options = {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'my_test_xxxxx'
+  }
+};
 
-import { myName, myObject } from '/snippets/path/to/custom-variables.mdx';
-
-Hello, my name is {myName} and I like {myObject.fruit}.
+fetch('https://api.twitterapi.io/twitter/user/batch?userIds=44196397,783214,6253282', options)
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
 ```
 
-### Reusable components
+## Error Handling
 
-1. Inside your snippet file, create a component that takes in props by exporting
-   your component in the form of an arrow function.
+| Status Code | Description                                                     |
+| ----------- | --------------------------------------------------------------- |
+| 400         | Invalid request - missing or invalid parameters                 |
+| 401         | Unauthorized - invalid or missing API key                       |
+| 404         | One or more users not found                                     |
+| 413         | Payload too large - too many user IDs (max: 100)                |
+| 429         | Rate limit exceeded - too many requests                         |
+| 500         | Server error - please try again later                           |
 
-```mdx snippets/custom-component.mdx
-export const MyComponent = ({ title }) => (
-  <div>
-    <h1>{title}</h1>
-    <p>... snippet content ...</p>
-  </div>
-);
-```
+## Performance Considerations
 
-<Warning>
-  MDX does not compile inside the body of an arrow function. Stick to HTML
-  syntax when you can or use a default export if you need to use MDX.
-</Warning>
+- Each batch request counts as a single API call for billing purposes.
+- For optimal performance, keep the number of user IDs per request under 50.
+- User IDs that don't exist or are suspended will be omitted from the response.
 
-2. Import the snippet into your destination file and pass in the props
+## Batch vs. Individual Requests
 
-```mdx destination-file.mdx
----
-title: My title
-description: My Description
----
+Using batch requests offers several advantages:
+1. Reduced network overhead
+2. Lower API usage cost
+3. Faster overall response time
+4. Single authentication and rate limit check
 
-import { MyComponent } from '/snippets/custom-component.mdx';
-
-Lorem ipsum dolor sit amet.
-
-<MyComponent title={'Custom title'} />
-```
+For applications that need to fetch data for multiple users, this endpoint is more efficient than making individual requests to the single user endpoint.

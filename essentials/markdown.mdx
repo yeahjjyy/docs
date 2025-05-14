@@ -1,88 +1,85 @@
 ---
-title: 'Markdown Syntax'
-description: 'Text, title, and styling in standard markdown'
-icon: 'text-size'
+title: 'Get User Info'
+description: 'Retrieves detailed information about a specific Twitter user'
+icon: 'user'
 ---
 
-## Titles
+## Endpoint Overview
 
-Best used for section headers.
+Get detailed information about a Twitter user using their username or user ID.
 
-```md
-## Titles
+**Endpoint URL:** `GET https://api.twitterapi.io/twitter/user/info`
+
+## Request Parameters
+
+| Parameter | Type   | Required | Description                                      |
+| --------- | ------ | -------- | ------------------------------------------------ |
+| userName  | string | Yes*     | Twitter username (without @)                     |
+| userId    | string | Yes*     | Twitter user ID number                           |
+
+*At least one of userName or userId must be provided
+
+## Response Format
+
+```json
+{
+  "id": "44196397",
+  "name": "Elon Musk",
+  "username": "elonmusk",
+  "bio": "Technoking of Tesla, Imperator of Mars",
+  "followers_count": 169800000,
+  "following_count": 150,
+  "tweet_count": 34500,
+  "listed_count": 120500,
+  "created_at": "2009-06-02T20:12:29.000Z",
+  "profile_image_url": "https://pbs.twimg.com/profile_images/1234567890/elon_musk_normal.jpg",
+  "verified": true,
+  "location": "Mars & Earth"
+}
 ```
 
-### Subtitles
+## Code Examples
 
-Best use to subsection headers.
+### cURL
 
-```md
-### Subtitles
+```bash
+curl --location 'https://api.twitterapi.io/twitter/user/info?userName=elonmusk' \
+--header 'x-api-key: my_test_xxxxx'
 ```
 
-<Tip>
+### Python
 
-Each **title** and **subtitle** creates an anchor and also shows up on the table of contents on the right.
+```python
+import requests
 
-</Tip>
-
-## Text Formatting
-
-We support most markdown formatting. Simply add `**`, `_`, or `~` around text to format it.
-
-| Style         | How to write it   | Result          |
-| ------------- | ----------------- | --------------- |
-| Bold          | `**bold**`        | **bold**        |
-| Italic        | `_italic_`        | _italic_        |
-| Strikethrough | `~strikethrough~` | ~strikethrough~ |
-
-You can combine these. For example, write `**_bold and italic_**` to get **_bold and italic_** text.
-
-You need to use HTML to write superscript and subscript text. That is, add `<sup>` or `<sub>` around your text.
-
-| Text Size   | How to write it          | Result                 |
-| ----------- | ------------------------ | ---------------------- |
-| Superscript | `<sup>superscript</sup>` | <sup>superscript</sup> |
-| Subscript   | `<sub>subscript</sub>`   | <sub>subscript</sub>   |
-
-## Linking to Pages
-
-You can add a link by wrapping text in `[]()`. You would write `[link to google](https://google.com)` to [link to google](https://google.com).
-
-Links to pages in your docs need to be root-relative. Basically, you should include the entire folder path. For example, `[link to text](/writing-content/text)` links to the page "Text" in our components section.
-
-Relative links like `[link to text](../text)` will open slower because we cannot optimize them as easily.
-
-## Blockquotes
-
-### Singleline
-
-To create a blockquote, add a `>` in front of a paragraph.
-
-> Dorothy followed her through many of the beautiful rooms in her castle.
-
-```md
-> Dorothy followed her through many of the beautiful rooms in her castle.
+url = 'https://api.twitterapi.io/twitter/user/info?userName=elonmusk'
+headers = {'x-api-key': 'my_test_xxxxx'}
+response = requests.get(url, headers=headers)
+print(response.json())
 ```
 
-### Multiline
+### JavaScript
 
-> Dorothy followed her through many of the beautiful rooms in her castle.
->
-> The Witch bade her clean the pots and kettles and sweep the floor and keep the fire fed with wood.
+```javascript
+const options = {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'my_test_xxxxx'
+  }
+};
 
-```md
-> Dorothy followed her through many of the beautiful rooms in her castle.
->
-> The Witch bade her clean the pots and kettles and sweep the floor and keep the fire fed with wood.
+fetch('https://api.twitterapi.io/twitter/user/info?userName=elonmusk', options)
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
 ```
 
-### LaTeX
+## Error Codes
 
-Mintlify supports [LaTeX](https://www.latex-project.org) through the Latex component.
-
-<Latex>8 x (vk x H1 - H2) = (0,1)</Latex>
-
-```md
-<Latex>8 x (vk x H1 - H2) = (0,1)</Latex>
-```
+| Status Code | Description                                        |
+| ----------- | -------------------------------------------------- |
+| 400         | Invalid request - missing required parameters      |
+| 401         | Unauthorized - invalid or missing API key          |
+| 404         | User not found                                     |
+| 429         | Rate limit exceeded - too many requests            |
+| 500         | Server error - please try again later              |

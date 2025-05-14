@@ -9,7 +9,7 @@ Every API request requires authentication using an API key in the HTTP headers.
 
 ## Getting Your API Key
 
-1. Log in to your [TwitterApiIO Dashboard](#)
+1. Log in to your [TwitterApiIO Dashboard](https://dashboard.twitterapi.io)
 2. Find your API key displayed on the dashboard homepage
 
 ---
@@ -29,13 +29,13 @@ x-api-key: YOUR_API_KEY
 ### cURL
 
 ```bash
-curl --location 'https://api.twitterapi.io/twitter/user/followings' \
+curl --location 'https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI' \
 --header 'x-api-key: my_test_xxxxx'
 ```
 
 ### Python
 
-```bash
+```python
 import requests
 
 url = 'https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI'
@@ -44,9 +44,25 @@ response = requests.get(url, headers=headers)
 print(response.json())
 ```
 
+### JavaScript
+
+```javascript
+const options = {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'my_test_xxxxx'
+  }
+};
+
+fetch('https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI', options)
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
 ### Java
 
-```bash
+```java
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;

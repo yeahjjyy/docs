@@ -1,59 +1,115 @@
 ---
-title: 'Images and Embeds'
-description: 'Add image, video, and other HTML elements'
-icon: 'image'
+title: 'Get User Followers'
+description: 'Retrieves a list of followers for a specific Twitter user'
+icon: 'users'
 ---
 
-<img
-  style={{ borderRadius: '0.5rem' }}
-  src="https://mintlify-assets.b-cdn.net/bigbend.jpg"
-/>
+## Endpoint Overview
 
-## Image
+Get a list of users who follow a specific Twitter user.
 
-### Using Markdown
+**Endpoint URL:** `GET https://api.twitterapi.io/twitter/user/followers`
 
-The [markdown syntax](https://www.markdownguide.org/basic-syntax/#images) lets you add images using the following code
+## Request Parameters
 
-```md
-![title](/path/image.jpg)
+| Parameter  | Type    | Required | Description                                            |
+| ---------- | ------- | -------- | ------------------------------------------------------ |
+| userName   | string  | Yes*     | Twitter username (without @)                           |
+| userId     | string  | Yes*     | Twitter user ID number                                 |
+| count      | number  | No       | Number of followers to return (default: 20, max: 200)  |
+| cursor     | string  | No       | Pagination cursor to get the next set of results       |
+| includeUserEntities | boolean | No | Include user entities in response (default: false)  |
+
+*At least one of userName or userId must be provided
+
+## Response Format
+
+```json
+{
+  "users": [
+    {
+      "id": "12345678",
+      "name": "Jane Smith",
+      "username": "janesmith",
+      "bio": "Software developer and tech enthusiast",
+      "followers_count": 850,
+      "following_count": 300,
+      "tweet_count": 1250,
+      "created_at": "2015-06-12T20:12:29.000Z",
+      "profile_image_url": "https://pbs.twimg.com/profile_images/12345/jane_normal.jpg",
+      "verified": false
+    },
+    // Additional followers...
+  ],
+  "meta": {
+    "result_count": 20,
+    "next_cursor": "MTYyNjIwMDgwMTcwODAxNjUwNQ"
+  }
+}
 ```
 
-Note that the image file size must be less than 5MB. Otherwise, we recommend hosting on a service like [Cloudinary](https://cloudinary.com/) or [S3](https://aws.amazon.com/s3/). You can then use that URL and embed.
+## Pagination
 
-### Using Embeds
+To retrieve the next set of followers, use the `next_cursor` value from the response in your next API call:
 
-To get more customizability with images, you can also use [embeds](/writing-content/embed) to add images
-
-```html
-<img height="200" src="/path/image.jpg" />
+```
+https://api.twitterapi.io/twitter/user/followers?userName=elonmusk&cursor=MTYyNjIwMDgwMTcwODAxNjUwNQ
 ```
 
-## Embeds and HTML elements
+If no `next_cursor` is provided in the response, you have reached the end of the results.
 
-<iframe
-  width="560"
-  height="315"
-  src="https://www.youtube.com/embed/4KzFe50RQkQ"
-  title="YouTube video player"
-  frameBorder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-  allowFullScreen
-  style={{ width: '100%', borderRadius: '0.5rem' }}
-></iframe>
+## Code Examples
 
-<br />
+### cURL
 
-<Tip>
+```bash
+curl --location 'https://api.twitterapi.io/twitter/user/followers?userName=elonmusk&count=50' \
+--header 'x-api-key: my_test_xxxxx'
+```
 
-Mintlify supports [HTML tags in Markdown](https://www.markdownguide.org/basic-syntax/#html). This is helpful if you prefer HTML tags to Markdown syntax, and lets you create documentation with infinite flexibility.
+### Python
 
-</Tip>
+```python
+import requests
 
-### iFrames
+url = 'https://api.twitterapi.io/twitter/user/followers'
+params = {
+    'userName': 'elonmusk',
+    'count': 50
+}
+headers = {'x-api-key': 'my_test_xxxxx'}
+response = requests.get(url, params=params, headers=headers)
+print(response.json())
 
-Loads another HTML page within the document. Most commonly used for embedding videos.
+# For pagination:
+data = response.json()
+if 'meta' in data and 'next_cursor' in data['meta']:
+    params['cursor'] = data['meta']['next_cursor']
+    next_response = requests.get(url, params=params, headers=headers)
+    print(next_response.json())
+```
 
-```html
-<iframe src="https://www.youtube.com/embed/4KzFe50RQkQ"> </iframe>
+### JavaScript
+
+```javascript
+const options = {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'my_test_xxxxx'
+  }
+};
+
+fetch('https://api.twitterapi.io/twitter/user/followers?userName=elonmusk&count=50', options)
+  .then(response => response.json())
+  .then(data => {
+    console.log(data);
+    
+    // For pagination:
+    if (data.meta && data.meta.next_cursor) {
+      fetch(`https://api.twitterapi.io/twitter/user/followers?userName=elonmusk&count=50&cursor=${data.meta.next_cursor}`, options)
+        .then(response => response.json())
+        .then(nextData => console.log(nextData));
+    }
+  })
+  .catch(error => console.error('Error:', error));
 ```

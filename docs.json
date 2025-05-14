@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "TwitterAPI.io",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1DA1F2",
+    "light": "#60CEFF",
+    "dark": "#0C7ABF"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -23,12 +23,12 @@
           {
             "group": "User Endpoint",
             "pages": [
+              "essentials/reusable-snippets",
               "essentials/markdown",
               "essentials/code",
               "essentials/images",
               "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
+              "essentials/navigation"
             ]
           }
         ]
@@ -63,20 +63,20 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@twitterapi.io"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "href": "https://dashboard.twitterapi.io"
     }
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/twitterapiio",
+      "github": "https://github.com/twitterapiio",
+      "linkedin": "https://linkedin.com/company/twitterapiio"
     }
   }
 }

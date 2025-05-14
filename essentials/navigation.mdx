@@ -1,87 +1,156 @@
 ---
-title: 'Navigation'
-description: 'The navigation field in docs.json defines the pages that go in the navigation menu'
-icon: 'map'
+title: 'Get User Mentions'
+description: 'Retrieves tweets that mention a specific Twitter user'
+icon: 'at'
 ---
 
-The navigation menu is the list of links on every website.
+## Endpoint Overview
 
-You will likely update `docs.json` every time you add a new page. Pages do not show up automatically.
+Get tweets that mention a specific Twitter user using their username or user ID.
 
-## Navigation syntax
+**Endpoint URL:** `GET https://api.twitterapi.io/twitter/user/mentions`
 
-Our navigation syntax is recursive which means you can make nested navigation groups. You don't need to include `.mdx` in page names.
+## Request Parameters
 
-<CodeGroup>
+| Parameter  | Type    | Required | Description                                           |
+| ---------- | ------- | -------- | ----------------------------------------------------- |
+| userName   | string  | Yes*     | Twitter username (without @)                          |
+| userId     | string  | Yes*     | Twitter user ID number                                |
+| count      | number  | No       | Number of mentions to return (default: 20, max: 100)  |
+| startTime  | string  | No       | Start time for mentions in ISO 8601 format            |
+| endTime    | string  | No       | End time for mentions in ISO 8601 format              |
+| cursor     | string  | No       | Pagination cursor to get the next set of results      |
 
-```json Regular Navigation
-"navigation": {
-  "tabs": [
+*At least one of userName or userId must be provided
+
+## Response Format
+
+```json
+{
+  "tweets": [
     {
-      "tab": "Docs",
-      "groups": [
-        {
-          "group": "Getting Started",
-          "pages": ["quickstart"]
-        }
-      ]
-    }
-  ]
+      "id": "1234567890123456789",
+      "text": "Hey @elonmusk, what do you think about the latest SpaceX launch?",
+      "created_at": "2023-06-15T12:30:45.000Z",
+      "author": {
+        "id": "98765432109876543",
+        "name": "Space Enthusiast",
+        "username": "space_fan"
+      },
+      "retweet_count": 5,
+      "like_count": 42,
+      "reply_count": 3,
+      "quote_count": 1,
+      "source": "Twitter Web App",
+      "entities": {
+        "hashtags": [],
+        "urls": [],
+        "mentions": [
+          {
+            "username": "elonmusk",
+            "id": "44196397",
+            "start": 4,
+            "end": 13
+          }
+        ]
+      }
+    },
+    // Additional mentions...
+  ],
+  "meta": {
+    "result_count": 20,
+    "oldest_id": "1234567890123456700",
+    "newest_id": "1234567890123456789",
+    "next_cursor": "MTYyNjIwMDgwMTcwODAxNjUwNQ"
+  }
 }
 ```
 
-```json Nested Navigation
-"navigation": {
-  "tabs": [
-    {
-      "tab": "Docs",
-      "groups": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "quickstart",
-            {
-              "group": "Nested Reference Pages",
-              "pages": ["nested-reference-page"]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+## Pagination
+
+To retrieve the next set of mentions, use the `next_cursor` value from the response in your next API call:
+
+```
+https://api.twitterapi.io/twitter/user/mentions?userName=elonmusk&cursor=MTYyNjIwMDgwMTcwODAxNjUwNQ
 ```
 
-</CodeGroup>
+If no `next_cursor` is provided in the response, you have reached the end of the results.
 
-## Folders
+## Code Examples
 
-Simply put your MDX files in folders and update the paths in `docs.json`.
+### cURL
 
-For example, to have a page at `https://yoursite.com/your-folder/your-page` you would make a folder called `your-folder` containing an MDX file called `your-page.mdx`.
-
-<Warning>
-
-You cannot use `api` for the name of a folder unless you nest it inside another folder. Mintlify uses Next.js which reserves the top-level `api` folder for internal server calls. A folder name such as `api-reference` would be accepted.
-
-</Warning>
-
-```json Navigation With Folder
-"navigation": {
-  "tabs": [
-    {
-      "tab": "Docs",
-      "groups": [
-        {
-          "group": "Group Name",
-          "pages": ["your-folder/your-page"]
-        }
-      ]
-    }
-  ]
-}
+```bash
+curl --location 'https://api.twitterapi.io/twitter/user/mentions?userName=elonmusk&count=30' \
+--header 'x-api-key: my_test_xxxxx'
 ```
 
-## Hidden Pages
+### Python
 
-MDX files not included in `docs.json` will not show up in the sidebar but are accessible through the search bar and by linking directly to them.
+```python
+import requests
+
+url = 'https://api.twitterapi.io/twitter/user/mentions'
+params = {
+    'userName': 'elonmusk',
+    'count': 30,
+    'startTime': '2023-01-01T00:00:00Z'
+}
+headers = {'x-api-key': 'my_test_xxxxx'}
+response = requests.get(url, params=params, headers=headers)
+print(response.json())
+
+# For pagination:
+data = response.json()
+if 'meta' in data and 'next_cursor' in data['meta']:
+    params['cursor'] = data['meta']['next_cursor']
+    next_response = requests.get(url, params=params, headers=headers)
+    print(next_response.json())
+```
+
+### JavaScript
+
+```javascript
+const options = {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'my_test_xxxxx'
+  }
+};
+
+const params = new URLSearchParams({
+  userName: 'elonmusk',
+  count: 30,
+  startTime: '2023-01-01T00:00:00Z'
+});
+
+fetch(`https://api.twitterapi.io/twitter/user/mentions?${params}`, options)
+  .then(response => response.json())
+  .then(data => {
+    console.log(data);
+    
+    // For pagination:
+    if (data.meta && data.meta.next_cursor) {
+      const nextParams = new URLSearchParams({
+        userName: 'elonmusk',
+        count: 30,
+        startTime: '2023-01-01T00:00:00Z',
+        cursor: data.meta.next_cursor
+      });
+      
+      fetch(`https://api.twitterapi.io/twitter/user/mentions?${nextParams}`, options)
+        .then(response => response.json())
+        .then(nextData => console.log(nextData));
+    }
+  })
+  .catch(error => console.error('Error:', error));
+```
+
+## Filter Mentions by Time Range
+
+You can filter mentions by time range using the `startTime` and `endTime` parameters. Both parameters should be in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ).
+
+Example:
+```
+https://api.twitterapi.io/twitter/user/mentions?userName=elonmusk&startTime=2023-01-01T00:00:00Z&endTime=2023-01-31T23:59:59Z
+```
