@@ -40,7 +40,7 @@
     <animate attributeName="opacity" from="0" to="1" dur="1s" begin="1s" fill="freeze"/>
     TwitterX
   </text>
-  <text x="200" y="50" font-family="Inter, sans-serif" font-size="30" font-weight="500" fill="#93C5FD" opacity="0">
+  <text x="200" y="50" font-family="Inter, sans-serif" font-size="30" font-weight="500" fill="#6B9FE8" opacity="0">
     <animate attributeName="opacity" from="0" to="1" dur="1s" begin="1.3s" fill="freeze"/>
     API
   </text>
