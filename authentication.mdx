@@ -9,7 +9,7 @@ Every API request requires authentication using an API key in the HTTP headers.
 
 ## Getting Your API Key
 
-1. Log in to your [TwitterApiIO Dashboard](https://dashboard.twitterapi.io)
+1. Log in to your [TwitterXApi Dashboard](https://dashboard.twitterxapi.com)
 2. Find your API key displayed on the dashboard homepage
 
 ---
@@ -20,7 +20,7 @@ All API requests must include the `x-api-key` header for authentication.
 **Header format:**
 
 ```bash
-x-api-key: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY
 ```
 ---
 
@@ -29,8 +29,15 @@ x-api-key: YOUR_API_KEY
 ### cURL
 
 ```bash
-curl --location 'https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI' \
---header 'x-api-key: my_test_xxxxx'
+curl --request POST \
+  --url https://api.twitterxapi.com/twitter/batch_get_users \
+  --header 'Content-Type: application/json' \
+  --header 'authorization: 22aa' \
+  --data '{
+  "usernames": [
+    "elonmusk"
+  ]
+}'
 ```
 
 ### Python
@@ -38,45 +45,43 @@ curl --location 'https://api.twitterapi.io/twitter/user/followings?userName=Kait
 ```python
 import requests
 
-url = 'https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI'
-headers = {'x-api-key': 'my_test_xxxxx'}
-response = requests.get(url, headers=headers)
-print(response.json())
+url = "https://api.twitterxapi.com/twitter/batch_get_users"
+
+payload = {"usernames": ["elonmusk"]}
+headers = {
+    "Authorization": "Bearer 111",
+    "Content-Type": "application/json"
+}
+
+response = requests.request("POST", url, json=payload, headers=headers)
+
+print(response.text)
 ```
 
 ### JavaScript
 
 ```javascript
 const options = {
-  method: 'GET',
+  method: 'POST',
   headers: {
-    'x-api-key': 'my_test_xxxxx'
-  }
+    Authorization: 'Bearer 59c03448e8bb4df7bb81d93ddc63aa22',
+    'Content-Type': 'application/json'
+  },
+  body: '{"usernames":["elonmusk"]}'
 };
 
-fetch('https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI', options)
+fetch('https://api.twitterxapi.com/twitter/batch_get_users', options)
   .then(response => response.json())
-  .then(data => console.log(data))
-  .catch(error => console.error('Error:', error));
+  .then(response => console.log(response))
+  .catch(err => console.error(err));
 ```
 
 ### Java
 
 ```java
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-
-OkHttpClient client = new OkHttpClient();
-
-Request request = new Request.Builder()
-    .url("https://api.twitterapi.io/twitter/user/followings?userName=KaitoEasyAPI")
-    .addHeader("x-api-key", "my_test_xxxxx")
-    .build();
-
-try (Response response = client.newCall(request).execute()) {
-    System.out.println(response.body().string());
-} catch (Exception e) {
-    e.printStackTrace();
-}
+HttpResponse<String> response = Unirest.post("https://api.twitterxapi.com/twitter/batch_get_users")
+  .header("Authorization", "Bearer 59c03448e8bb4df7bb81d93ddc63aa22")
+  .header("Content-Type", "application/json")
+  .body("{\n  \"usernames\": [\n    \"elonmusk\"\n  ]\n}")
+  .asString();
 ```

@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "TwitterAPI.io",
+  "name": "TwitterXApi.com",
   "colors": {
     "primary": "#1DA1F2",
     "light": "#60CEFF",
@@ -9,31 +9,27 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "tabs": [
-      {
-        "tab": "Get Started",
+    
+      
         "groups": [
           {
             "group": "Get Started",
             "pages": [
-              "Introduction",
-              "Authentication"
+              "index",
+              "authentication"
             ]
           },
           {
-            "group": "User Endpoint",
-            "pages": [
-              "essentials/reusable-snippets",
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation"
-            ]
+            "group": "Endpoints",
+            "openapi": {
+              "source": "/api-reference/openapi.json",
+              "directory": "api-reference"
+            }
           }
+          
         ]
-      }
-    ]
+      
+    
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -43,20 +39,20 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@twitterapi.io"
+        "href": "mailto:support@twitterxapi.com"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.twitterapi.io"
+      "href": "https://dashboard.twitterxapi.com"
     }
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/twitterapiio",
-      "github": "https://github.com/twitterapiio",
-      "linkedin": "https://linkedin.com/company/twitterapiio"
+      "x": "https://x.com/twitterxapicom",
+      "github": "https://github.com/twitterxapicom",
+      "linkedin": "https://linkedin.com/company/twitterxapicom"
     }
   }
 }
