@@ -1,95 +1,38 @@
-<svg width="280" height="80" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景 -->
-  <rect width="280" height="80" fill="#0F172A" rx="12"/>
-  
-  <!-- Twitter鸟图标重新设计 -->
-  <g transform="translate(20, 20)">
-    <!-- 鸟身体 -->
-    <path d="M8 15c-3 0-5-2-5-5s2-5 5-5c6 0 12 3 18 8l-3 2c-4-3-8-5-12-5-2 0-3 1-3 2s1 2 3 2c5 0 10 4 10 9 0 4-3 7-7 7-3 0-6-2-8-4l2-2c1 1 3 2 5 2 2 0 3-1 3-3 0-3-3-6-8-6z" fill="url(#birdGradient)"/>
-    <!-- 翅膀 -->
-    <path d="M15 8c3 2 6 5 8 9l-2 1c-2-3-4-5-6-7z" fill="url(#wingGradient)" opacity="0.8"/>
+<svg width="320" height="90" viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Data Node Logo -->
+  <g transform="translate(15, 35)">
+    <circle cx="6" cy="6" r="6" fill="url(#gradient1)" />
+    <line x1="6" y1="6" x2="16" y2="6" stroke="url(#gradient2)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="19" cy="6" r="3" fill="#3B82F6"/>
   </g>
-  
-  <!-- X符号 -->
-  <g transform="translate(60, 25)">
-    <path d="M5 5L15 15M15 5L5 15" stroke="url(#xGradient)" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="10" cy="10" r="12" stroke="url(#xGradient)" stroke-width="1" fill="none" opacity="0.3"/>
-  </g>
-  
-  <!-- 主标题 -->
-  <text x="100" y="35" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="800" fill="#FAFAFA">
-    Twitter
+
+  <!-- Brand Text -->
+  <text x="60" y="50" font-family="Inter, sans-serif" font-size="30" font-weight="700" fill="#FAFAFA" filter="url(#textShadow)">
+    TwitterX
   </text>
-  <text x="180" y="35" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="800" fill="url(#xTextGradient)">
-    X
+  <text x="200" y="50" font-family="Inter, sans-serif" font-size="30" font-weight="500" fill="#93C5FD" filter="url(#textShadow)">
+    API
   </text>
-  
-  <!-- API标识 -->
-  <g transform="translate(210, 20)">
-    <rect x="0" y="0" width="50" height="20" rx="10" fill="url(#apiBackground)"/>
-    <text x="25" y="13" font-family="Inter, -apple-system, sans-serif" font-size="10" font-weight="600" fill="white" text-anchor="middle">
-      API
-    </text>
-  </g>
-  
-  <!-- 装饰元素 -->
-  <g transform="translate(100, 45)">
-    <!-- 代码括号 -->
-    <path d="M0 5L3 8L0 11M8 5L5 8L8 11" stroke="url(#codeGradient)" stroke-width="1.5" stroke-linecap="round"/>
-    <!-- 数据流点 -->
-    <circle cx="15" cy="8" r="1.5" fill="url(#dotGradient)"/>
-    <circle cx="20" cy="8" r="1" fill="url(#dotGradient)" opacity="0.7"/>
-    <circle cx="24" cy="8" r="0.8" fill="url(#dotGradient)" opacity="0.5"/>
-  </g>
-  
+
   <!-- 副标题 -->
-  <text x="20" y="65" font-family="Inter, -apple-system, sans-serif" font-size="9" font-weight="400" fill="#9CA3AF">
-    Professional Twitter Data Integration Platform
-  </text>
-  
-  <!-- 渐变定义 -->
+  <!-- <text x="45" y="50" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#9CA3AF" opacity="0.8">
+    Professional Twitter Data API
+  </text> -->
+
+  <!-- Filters: Text shadow -->
   <defs>
-    <!-- 鸟渐变 -->
-    <linearGradient id="birdGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1DA1F2"/>
-      <stop offset="100%" stop-color="#60CEFF"/>
-    </linearGradient>
-    
-    <!-- 翅膀渐变 -->
-    <linearGradient id="wingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#60CEFF"/>
-      <stop offset="100%" stop-color="#93C5FD"/>
-    </linearGradient>
-    
-    <!-- X符号渐变 -->
-    <linearGradient id="xGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#EC4899"/>
-      <stop offset="50%" stop-color="#EF4444"/>
-      <stop offset="100%" stop-color="#F59E0B"/>
-    </linearGradient>
-    
-    <!-- X文字渐变 -->
-    <linearGradient id="xTextGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F97316"/>
-      <stop offset="100%" stop-color="#EF4444"/>
-    </linearGradient>
-    
-    <!-- API背景渐变 -->
-    <linearGradient id="apiBackground" x1="0%" y1="0%" x2="100%" y2="100%">
+    <filter id="textShadow" x="0" y="0" width="150%" height="150%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-color="#000000" flood-opacity="0.1" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#2563EB"/>
     </linearGradient>
-    
-    <!-- 代码渐变 -->
-    <linearGradient id="codeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10B981"/>
-      <stop offset="100%" stop-color="#34D399"/>
-    </linearGradient>
-    
-    <!-- 点渐变 -->
-    <linearGradient id="dotGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8B5CF6"/>
-      <stop offset="100%" stop-color="#A78BFA"/>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
     </linearGradient>
   </defs>
 </svg>
