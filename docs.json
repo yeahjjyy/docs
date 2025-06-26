@@ -45,7 +45,7 @@
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.twitterxapi.com"
+      "href": "https://twitterxapi.com/dashboard"
     }
   },
   "footer": {
