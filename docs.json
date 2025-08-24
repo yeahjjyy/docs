@@ -45,14 +45,14 @@
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://twitterxapi.com/dashboard"
+      "href": "https://www.twexapi.io/dashboard"
     }
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/twitterxapicom",
-      "github": "https://github.com/twitterxapicom",
-      "linkedin": "https://linkedin.com/company/twitterxapicom"
+      "x": "https://x.com/Tweexapicom",
+      "telegram": "https://t.me/+MUMR3PKOoVVjNzE9",
+      "discord": "https://discord.gg/uYCheYRs"
     }
   }
 }
