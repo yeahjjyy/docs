@@ -30,7 +30,7 @@ Authorization: Bearer YOUR_API_KEY
 
 ```bash
 curl --request GET \
-  --url 'https://api.twexapi.io/twitter/users?usernames=elonmusk' \
+  --url 'https://api.twitterxapi.com/twitter/users?usernames=elonmusk' \
   --header 'Authorization: Bearer YOUR_API_KEY'
 ```
 
@@ -39,7 +39,7 @@ curl --request GET \
 ```python
 import requests
 
-url = "https://api.twexapi.io/twitter/users"
+url = "https://api.twitterxapi.com/twitter/users"
 
 querystring = {"usernames":"elonmusk"}
 
@@ -60,7 +60,7 @@ const options = {
   }
 };
 
-fetch('https://api.twexapi.io/twitter/users?usernames=elonmusk', options)
+fetch('https://api.twitterxapi.com/twitter/users?usernames=elonmusk', options)
   .then(response => response.json())
   .then(response => console.log(response))
   .catch(err => console.error(err));
@@ -69,7 +69,7 @@ fetch('https://api.twexapi.io/twitter/users?usernames=elonmusk', options)
 ### Java
 
 ```java
-HttpResponse<String> response = Unirest.get("https://api.twexapi.io/twitter/users?usernames=elonmusk")
+HttpResponse<String> response = Unirest.get("https://api.twitterxapi.com/twitter/users?usernames=elonmusk")
   .header("Authorization", "Bearer YOUR_API_KEY")
   .asString();
 ```
