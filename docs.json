@@ -45,7 +45,7 @@
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://www.twexapi.io/dashboard"
+      "href": "https://twexapi.io/dashboard"
     }
   },
   "footer": {
