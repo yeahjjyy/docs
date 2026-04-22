@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "TwitterXApi.com",
+  "name": "twexapi.io",
   "colors": {
     "primary": "#1DA1F2",
     "light": "#60CEFF",
@@ -9,27 +9,22 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    
-      
-        "groups": [
-          {
-            "group": "Get Started",
-            "pages": [
-              "index",
-              "authentication"
-            ]
-          },
-          {
-            "group": "Endpoints",
-            "openapi": {
-              "source": "/api-reference/openapi.json",
-              "directory": "api-reference"
-            }
-          }
-          
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "index",
+          "authentication"
         ]
-      
-    
+      },
+      {
+        "group": "Endpoints",
+        "openapi": {
+          "source": "/api-reference/openapi.json",
+          "directory": "api-reference"
+        }
+      }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -39,7 +34,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@twitterxapi.com"
+        "href": "mailto:support@twexapi.io"
       }
     ],
     "primary": {
