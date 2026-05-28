@@ -1,0 +1,38 @@
+<svg width="320" height="90" viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Data Node Logo -->
+  <g transform="translate(15, 35)">
+    <circle cx="6" cy="6" r="6" fill="url(#gradient1)" />
+    <line x1="6" y1="6" x2="16" y2="6" stroke="url(#gradient2)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="19" cy="6" r="3" fill="#3B82F6"/>
+  </g>
+
+  <!-- Brand Text -->
+  <text x="60" y="50" font-family="Inter, sans-serif" font-size="30" font-weight="700" fill="#FAFAFA" filter="url(#textShadow)">
+    TwitterX
+  </text>
+  <text x="200" y="50" font-family="Inter, sans-serif" font-size="30" font-weight="500" fill="#93C5FD" filter="url(#textShadow)">
+    API
+  </text>
+
+  <!-- 副标题 -->
+  <!-- <text x="45" y="50" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#9CA3AF" opacity="0.8">
+    Professional Twitter Data API
+  </text> -->
+
+  <!-- Filters: Text shadow -->
+  <defs>
+    <filter id="textShadow" x="0" y="0" width="150%" height="150%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-color="#000000" flood-opacity="0.1" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+</svg>

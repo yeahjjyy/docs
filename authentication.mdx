@@ -1,6 +1,6 @@
 ---
 title: "Authentication"
-description: "Secure your API requests with Bearer token authentication - get started in minutes"
+description: "Bearer token authentication for Twexapi — use with Cursor, Claude Code, GitHub Copilot, ChatGPT, and AI coding agents. Get started in minutes."
 ---
 
 ## **API Authentication**
@@ -30,6 +30,23 @@ Include your API key in the `Authorization` header of every request using the Be
 ```bash
 Authorization: Bearer YOUR_API_KEY
 ```
+
+---
+
+## **Authenticate with AI Coding Agents**
+
+Install the TwexAPI skill so **Cursor**, **Claude Code**, **GitHub Copilot**, **ChatGPT**, **Cline**, **Windsurf**, **Codex**, **Gemini CLI**, **Continue**, **Roo Code**, and other AI assistants know how to attach Bearer tokens correctly. Setup guides and CLI options are on the [integrations hub](https://twexapi.io/integrations).
+
+<Tip>
+  Copy your API key from the [dashboard](https://twexapi.io/dashboard), store it in an environment variable, and ask your agent to wire up `Authorization: Bearer YOUR_API_KEY` — the skill covers the auth pattern across cURL, Python, JavaScript, and more.
+</Tip>
+
+```bash
+npx skills add yeahjjyy/twexapi-cli
+```
+
+In Cursor, GitHub Copilot, Claude Code, ChatGPT, Continue, Roo Code, or any supported agent, try prompts like *"configure Twexapi auth from my `.env` file"*, *"add Bearer authentication to this API client"*, or *"generate a test request with my API key"*.
+
 ---
 
 ## **Implementation Examples**
