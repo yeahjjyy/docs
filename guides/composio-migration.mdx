@@ -1,0 +1,109 @@
+---
+title: "Composio Migration"
+description: "Move X/Twitter agent workflows from Composio-style tools to Twexapi MCP."
+---
+
+Use this guide when an agent already calls packaged X/Twitter tools and you want to migrate the workflow to Twexapi MCP.
+
+## Prerequisites
+
+- A Twexapi API key
+- A list of existing X/Twitter actions used by your agent
+- An MCP-capable runtime connected to `https://api.twexapi.io/mcp`
+- A test prompt and expected output from the old workflow
+
+Use `x-api-key: YOUR_API_KEY` for MCP clients and `Authorization: Bearer YOUR_API_KEY` for REST fallbacks.
+
+## Migration map
+
+| Existing behavior | Twexapi MCP pattern |
+| --- | --- |
+| Search tweets | `explore(query="advanced search")`, then `twexapi_request` |
+| Read a profile | `explore(category="users")` or `explore(category="accounts")` |
+| Get followers | `explore(category="followers")` |
+| Read replies or quotes | `explore(category="engagement")` |
+| Post or reply | Use a `read_only: false` catalog entry and require confirmation |
+
+## Agent instruction
+
+```txt
+Replace packaged X/Twitter tools with Twexapi MCP.
+First call explore to find the closest Twexapi endpoint.
+Then call twexapi_request with the exact method and relative path returned by explore.
+Preserve tweet_id, user_id, route_used, has_more, and next_cursor.
+Ask for confirmation before read_only: false actions.
+```
+
+## Handoff contract
+
+Make every migrated tool return a stable handoff object before downstream steps consume it.
+
+```json
+{
+  "route_used": "/twitter/advanced_search",
+  "method": "POST",
+  "source_tool": "legacy_twitter_search",
+  "has_more": true,
+  "next_cursor": "cursor_123",
+  "rows": [
+    {
+      "tweet_id": "1803006263529541838",
+      "author_username": "openai",
+      "text": "Example tweet text",
+      "created_at": "2026-07-02T10:00:00Z",
+      "public_url": "https://x.com/i/web/status/1803006263529541838"
+    }
+  ]
+}
+```
+
+## Example migration
+
+Old task:
+
+```txt
+Search Twitter for AI agent launch announcements and summarize the top posts.
+```
+
+Twexapi MCP task:
+
+```txt
+Use Twexapi MCP to search recent X posts about "AI agent launch".
+Call explore first and choose the search endpoint.
+Return JSON with route_used, tweets[{tweet_id,text,author_username,created_at,public_url}], has_more, next_cursor, and a short summary.
+```
+
+## Validation checklist
+
+- Compare row counts before and after migration.
+- Verify all downstream steps use `tweet_id` instead of URL parsing.
+- Confirm cursors are stored outside the agent conversation.
+- Add human approval for any migrated write action.
+
+## Tool call rewrite
+
+Use this mechanical rewrite when adapting old agent instructions.
+
+| Old instruction | New instruction |
+| --- | --- |
+| "Call the Twitter search tool" | "Call `explore(query=\"advanced search\")`, then `twexapi_request`." |
+| "Fetch this profile" | "Call `explore(category=\"users\")` and preserve `user_id`." |
+| "Continue pagination" | "Use the returned `next_cursor`; do not parse it." |
+| "Post this tweet" | "Prepare a write plan and ask for approval before `read_only: false`." |
+
+## Regression prompt
+
+Run this before and after migration:
+
+```txt
+Find recent posts about "AI agents" from the last 24 hours.
+Return exactly 10 rows with tweet_id, author_username, text, created_at, public_url, route_used, has_more, and next_cursor.
+Do not call write endpoints.
+```
+
+## Production rollout
+
+1. Run old and new workflows side by side on read-only tasks.
+2. Compare row counts, required fields, and representative URLs.
+3. Switch scheduled jobs to the Twexapi MCP/REST route.
+4. Re-enable write actions only after approval prompts are tested.

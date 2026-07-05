@@ -1,0 +1,246 @@
+---
+title: "Agent MCP Handoff"
+description: "Instructions for safely handing Twexapi MCP access to AI agents and downstream workflows."
+---
+
+Use this page when you are giving Twexapi MCP access to an AI coding agent, research agent, workflow agent, or internal assistant.
+
+The short version: connect the API MCP server, give the agent an API key, instruct it to call `explore` before `twexapi_request`, and require durable handoff output instead of chat-only summaries.
+
+## Handoff checklist
+
+<Steps>
+  <Step title="Connect the API MCP server">
+    Add `https://api.twexapi.io/mcp` to your MCP client with either `x-api-key` or `Authorization: Bearer <token>`.
+  </Step>
+  <Step title="Connect the Docs MCP server">
+    Add `https://docs.twexapi.io/mcp` when the agent should search Twexapi documentation before choosing API routes.
+  </Step>
+  <Step title="Discover before calling">
+    Instruct the agent to call `explore` first, using a query or category that matches the task.
+  </Step>
+  <Step title="Require relative paths">
+    Instruct the agent to call `twexapi_request` only with relative paths returned by `explore`.
+  </Step>
+  <Step title="Preserve handoff fields">
+    Require IDs, cursors, task IDs, route names, status, and credit fields in the final output.
+  </Step>
+  <Step title="Handle writes carefully">
+    Require explicit user confirmation before any endpoint where `read_only` is `false`.
+  </Step>
+</Steps>
+
+## Agent route checklist
+
+### Read docs first
+
+Use Docs MCP at `https://docs.twexapi.io/mcp` for public documentation, API parameters, setup instructions, error codes, SDK guidance, and examples.
+
+### Discover the API route
+
+Use API MCP `explore` to find the exact endpoint, method, request schema, category, and safety flag.
+
+### Execute the API call
+
+Use API MCP `twexapi_request` with the exact method and relative path returned by `explore`. Pass only the documented `query` and `body` fields.
+
+### Persist outside chat
+
+Use REST, SDKs, a queue, or a workflow tool when a backend must own retries, cursor storage, file downloads, scheduled jobs, or batch orchestration.
+
+### Hand off results
+
+Store the endpoint path, request parameters, returned IDs, `has_more`, `next_cursor`, task IDs, write action IDs, charged credits, and any export or poll route before ending the agent run.
+
+## Copy-paste agent instruction
+
+Paste this into your agent's system instructions, project instructions, or task prompt:
+
+```txt
+You have access to Twexapi MCP servers.
+
+Use Twexapi Docs MCP first when you need product documentation, setup instructions, endpoint docs, authentication details, examples, or error-code explanations.
+
+Use the API MCP tool `explore` before making API calls. Search by query or category to find the correct Twexapi endpoint. Then call `twexapi_request` with the exact method and a relative path from the returned catalog entry.
+
+Rules:
+- Never call absolute URLs through `twexapi_request`.
+- Never call paths that were not returned by `explore`.
+- Do not call `/openapi.json`, docs pages, dashboards, or hidden framework routes through API MCP.
+- Treat any catalog entry with `read_only: false` as a production action.
+- Ask for explicit user confirmation before posting, replying, liking, retweeting, following, blocking, bookmarking, deleting, sending DMs, or making any other write call.
+- Preserve tweet IDs, user IDs, task IDs, cursors, write action IDs, status, credit fields, and response metadata in your final answer when they are useful for auditability.
+- If a request fails, report the HTTP status, endpoint name, method, path, and Twexapi error message.
+- For downstream workflows, return compact JSON with route_used, request, rows or ids, has_more, next_cursor, and next_step.
+```
+
+## Common workflows
+
+### Research trending topics
+
+```txt
+Use Twexapi MCP to find trending countries, choose the United States, fetch AI-related trending tweets, and summarize the top themes with tweet IDs.
+```
+
+Recommended route:
+
+1. `explore(category="trending")`
+2. `twexapi_request` for `/twitter/global-trending/countries`
+3. `twexapi_request` for `/twitter/global-trending/topics`
+4. `twexapi_request` for `/twitter/global-trending/tweets`
+
+Handoff fields: `country`, `topic`, `content`, `tweet_id`, `author_username`, `created_at`, engagement metrics, `has_more`, `next_cursor`.
+
+### Search tweets
+
+```txt
+Search recent posts from @openai that mention AI agents and return the most relevant tweets with IDs, author metadata, and a short summary.
+```
+
+Recommended route:
+
+1. `explore(query="advanced search tweets")`
+2. `twexapi_request` for `/twitter/advanced_search`
+3. Use `/twitter/advanced_search/page` if the catalog returns a pagination flow
+
+Handoff fields: original query, sort mode, `tweet_id`, text, author metadata, created time, direct URL, `has_more`, `next_cursor`.
+
+### Export followers
+
+```txt
+Export a page of followers for @openai in CRM-ready JSON.
+```
+
+Recommended route:
+
+1. `explore(category="followers")`
+2. `twexapi_request` for `/twitter/followers/{screen_name}/{count}` or a page/task endpoint returned by `explore`
+
+Handoff fields: source account, `user_id`, `username`, name, bio, follower count, verified status, task ID, `has_more`, `next_cursor`.
+
+### Scrape replies
+
+```txt
+Fetch replies for a tweet and return reply IDs, author usernames, text, and engagement fields.
+```
+
+Recommended route:
+
+1. `explore(query="tweet replies")`
+2. `twexapi_request` for `/twitter/tweets/{tweet_id}/replies/{count}` or `/twitter/tweets/{tweet_id}/replies/page`
+
+Handoff fields: source tweet ID, reply ID, author username, text, metrics, page index, `has_more`, `next_cursor`.
+
+### Fetch X articles
+
+```txt
+Fetch this X article as Markdown and turn it into a concise brief.
+```
+
+Recommended route:
+
+1. `explore(category="articles")`
+2. `twexapi_request` for `/x/article/{tweet_id}/markdown`
+
+Handoff fields: article ID, title, author, Markdown body, extracted links, source URL, generated summary.
+
+### Run a write action
+
+```txt
+Draft a reply to this tweet, ask me for confirmation, then post only after I approve.
+```
+
+Recommended route:
+
+1. `explore(query="create tweet", include_writes=true)`
+2. Present the exact write body to the user
+3. Wait for explicit confirmation
+4. `twexapi_request` for the returned write endpoint
+
+Handoff fields: confirmation text, method, path, request body, `tweet_id`, `write_action_id`, status, charged credits, reply target, media URLs.
+
+## Handoff output contract
+
+For durable workflows, ask the agent to return compact JSON:
+
+```json
+{
+  "source": "twexapi_mcp",
+  "job": "tweet_search",
+  "route_used": "/twitter/advanced_search",
+  "request": {
+    "method": "POST",
+    "path": "/twitter/advanced_search",
+    "query": null,
+    "body": {
+      "searchTerms": ["from:openai AI agents"],
+      "maxItems": 20,
+      "sortBy": "Latest"
+    }
+  },
+  "rows": [],
+  "ids": [],
+  "has_more": false,
+  "next_cursor": null,
+  "next_step": null
+}
+```
+
+Use `rows` for records that should go into a CRM, spreadsheet, database, or queue. Use `ids` when the next worker only needs durable identifiers.
+
+## Safety model
+
+Twexapi MCP has three important guardrails:
+
+| Guardrail | Behavior |
+| --- | --- |
+| API key auth | MCP uses the same API key validation, credit checks, and account controls as the REST API. |
+| Allowlisted paths | `twexapi_request` rejects endpoints outside the MCP catalog. |
+| Write flags | Side-effecting actions are marked `read_only: false` so agents can request confirmation. |
+
+## Error handling
+
+When MCP authentication fails, the tool does not run. Preserve the JSON-RPC error:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "error": {
+    "code": 401,
+    "message": "Missing MCP API token"
+  }
+}
+```
+
+When `twexapi_request` runs and the underlying Twexapi API returns a non-2xx response, ask the agent to preserve the tool result:
+
+```json
+{
+  "status_code": 403,
+  "endpoint": "get_global_trending_tweets",
+  "method": "GET",
+  "path": "/twitter/global-trending/tweets",
+  "result": {
+    "detail": "Credits exhausted or action not allowed."
+  }
+}
+```
+
+Useful interpretations:
+
+| Status | Meaning |
+| --- | --- |
+| `401` | MCP authentication failed before the tool ran; check `x-api-key` or Bearer auth. |
+| `403` | The API key is unavailable, credits are exhausted, or the action is not allowed. |
+| `429` | Rate limit exceeded. Retry after the limit window. |
+| `5xx` | Service-side failure or upstream X/Twitter fetch issue. |
+
+## Production guidance
+
+- Use a scoped API key when the agent only needs a specific workflow.
+- Prefer read-only workflows for autonomous agents.
+- Log prompts, request bodies, route names, and MCP responses for write workflows.
+- Require human approval before `read_only: false` calls.
+- Keep cookies, auth tokens, API keys, and private DM text out of final user-visible messages.
+- Store cursors and task IDs outside chat when another worker needs to continue the job.
+- Use direct REST or generated SDKs for scheduled production jobs that need retries, queueing, and durable storage.

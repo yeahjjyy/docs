@@ -1,0 +1,287 @@
+---
+title: "MCP tools reference"
+description: "Twexapi MCP tools for endpoint discovery, authenticated API calls, workflow handoff, and safe agent execution."
+---
+
+The Twexapi API MCP server exposes 2 tools: `explore` and `twexapi_request`. Connect to `https://api.twexapi.io/mcp` with `x-api-key` or OAuth 2.1 Bearer auth.
+
+Agents should use `explore` to inspect the API catalog before calling `twexapi_request`. This keeps endpoint selection explicit, helps the agent preserve request schemas, and prevents accidental calls to paths that are not available through MCP.
+
+## Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `explore` | Search the API endpoint catalog and return methods, paths, categories, parameters, examples, and safety flags. |
+| `twexapi_request` | Execute authenticated Twexapi API calls against allowlisted relative paths. |
+
+## `explore`
+
+Search the API endpoint catalog. Read-only, no X/Twitter network calls, and no endpoint credits consumed. The call still requires MCP authentication through an API key or OAuth Bearer token.
+
+Use `explore` to discover available endpoints, check parameters, compare categories, and find the right API path before executing calls.
+
+### Input
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | No | Keyword search across endpoint name, method, path, category, description, and examples. |
+| `category` | string | No | Exact category filter, such as `trending`, `search`, `users`, `articles`, or `write`. |
+| `include_writes` | boolean | No | Include endpoints with side effects. Write endpoints are marked `read_only: false`. |
+
+### Catalog shape
+
+```ts
+interface EndpointInfo {
+  name: string;
+  method: string;
+  path: string;
+  category: string;
+  description: string;
+  read_only: boolean;
+  parameters_schema?: Record<string, unknown>;
+  example?: {
+    method: string;
+    path: string;
+    query?: Record<string, unknown>;
+    body?: unknown;
+  };
+}
+```
+
+### Examples
+
+Find trending endpoints:
+
+```json
+{
+  "category": "trending"
+}
+```
+
+Search by keyword:
+
+```json
+{
+  "query": "advanced search tweets"
+}
+```
+
+Include write-capable endpoints:
+
+```json
+{
+  "query": "create tweet",
+  "include_writes": true
+}
+```
+
+## `twexapi_request`
+
+Execute API calls against your Twexapi account. Auth is injected automatically from the MCP request, so agents only pass the endpoint method, relative path, and optional query/body data.
+
+### Input
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `method` | string | Yes | HTTP method returned by `explore`, such as `GET` or `POST`. |
+| `path` | string | Yes | Relative Twexapi API path. Absolute URLs are rejected. |
+| `query` | object | No | Query parameters for the request. |
+| `body` | object, array, or scalar | No | JSON request body for non-GET requests. |
+
+<Warning>
+  Call `explore` first and use the exact relative path returned by the catalog. Do not call `/openapi.json`, docs pages, dashboards, or hidden framework routes through `twexapi_request`.
+</Warning>
+
+### Response contract
+
+`twexapi_request` returns MCP execution metadata plus the underlying REST response:
+
+```json
+{
+  "status_code": 200,
+  "endpoint": "list_global_trending_countries",
+  "method": "GET",
+  "path": "/twitter/global-trending/countries",
+  "result": {
+    "code": 200,
+    "msg": "success",
+    "data": []
+  }
+}
+```
+
+Preserve durable fields from `result`, including IDs, cursors, task IDs, credit fields, and write action IDs. When a page includes `has_more` and `next_cursor`, pass the cursor into the documented follow-up endpoint or query parameter returned by `explore`.
+
+## Workflow examples
+
+These examples show the shape an agent should produce. Run `explore` first in real use so the agent can confirm the current schema.
+
+### Search tweets with handoff rows
+
+```json
+{
+  "method": "POST",
+  "path": "/twitter/advanced_search",
+  "body": {
+    "searchTerms": ["from:openai AI agents"],
+    "maxItems": 20,
+    "sortBy": "Latest"
+  }
+}
+```
+
+Ask the agent to return a compact handoff object:
+
+```json
+{
+  "source": "twexapi_mcp",
+  "job": "tweet_search",
+  "route_used": "/twitter/advanced_search",
+  "query": "from:openai AI agents",
+  "rows": [
+    {
+      "tweet_id": "1803006263529541838",
+      "text": "...",
+      "author_username": "openai",
+      "created_at": "..."
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### Fetch trending tweets
+
+```json
+{
+  "method": "GET",
+  "path": "/twitter/global-trending/tweets",
+  "query": {
+    "country": "united-states",
+    "topic": "technology",
+    "content": "AI",
+    "count": 20
+  }
+}
+```
+
+Store `country`, `topic`, `content`, tweet IDs, author usernames, engagement fields, `has_more`, and `next_cursor` when present.
+
+### Export followers to a CRM
+
+```json
+{
+  "method": "GET",
+  "path": "/twitter/followers/openai/50"
+}
+```
+
+Store `user_id`, `username`, `name`, `description`, `followers_count`, the source account, and pagination/task fields. If the endpoint returns a task ID, store it and poll the documented status/next endpoint.
+
+### Read an X article as Markdown
+
+```json
+{
+  "method": "GET",
+  "path": "/x/article/1803006263529541838/markdown"
+}
+```
+
+Store the article ID, title, author, Markdown body, extracted links, and source URL.
+
+### Post a tweet or reply
+
+```json
+{
+  "method": "POST",
+  "path": "/twitter/tweets/create",
+  "body": {
+    "tweet_content": "Hello from Twexapi MCP",
+    "reply_tweet_id": null,
+    "media_url": null
+  }
+}
+```
+
+<Warning>
+  Treat any endpoint with `read_only: false` as a production action. Require explicit user confirmation before posting, replying, following, blocking, deleting, bookmarking, or sending DMs.
+</Warning>
+
+Store `tweet_id`, `write_action_id`, `status`, `charged_credits`, reply target, media URLs, and the user confirmation record.
+
+## Agent handoff patterns
+
+MCP returns JSON. For agent queues, CRMs, spreadsheets, warehouses, and no-code workflows, return a small durable object with the original job, route used, normalized rows or IDs to store, and the next cursor or task to poll.
+
+### Search tweets to JSON
+
+Call `POST /twitter/advanced_search`. Store tweet IDs, text, author metadata, created time, links, `has_more`, `next_cursor`, and the original query.
+
+### Scrape replies
+
+Call `GET /twitter/tweets/{tweet_id}/replies/{count}` for a bounded page or `GET /twitter/tweets/{tweet_id}/replies/page` for cursor-style pagination. Store reply IDs, author usernames, text, metrics, `has_more`, and `next_cursor`.
+
+### Export followers
+
+Call `GET /twitter/followers/{screen_name}/{count}` or the page/task endpoints returned by `explore`. Store user IDs, usernames, names, bios, follower counts, source account, task ID, and next cursor.
+
+### Track write actions
+
+For write endpoints, store the endpoint path, body hash or confirmation text, returned tweet ID or write action ID, status, charged credits, and media references.
+
+### Send DMs
+
+Call the DM endpoint only after user confirmation. Store message ID, recipient user ID, account, media references, and delivery status. Keep full DM bodies out of shared MCP outputs.
+
+## Endpoint categories
+
+| Category | Common uses |
+| --- | --- |
+| `trending` | Countries, topics, content tags, and trending tweets. |
+| `search` | Advanced search, hashtag search, cashtag search, and paginated search. |
+| `users` | User lookup, account verification, user search, and account status. |
+| `tweets` | Replies, threads, tweet lookup, similar tweets, sentiment, quotes, retweeters, and favoriters. |
+| `followers` | Followers, following, latest followers, and paginated relationship data. |
+| `communities` | Community metadata, members, tweets, search, and community tweet search. |
+| `lists` | List creation, list tweets, members, subscribers, and list search. |
+| `dm` | DM status, send DM, and DM history. |
+| `articles` | X article lookup, Markdown fetches, drafts, covers, content updates, and publishing. |
+| `timeline` | User timelines and tweets/replies pages. |
+| `accounts` | Cookie validation, account info, account verification, and account status. |
+| `write` | Side-effecting actions such as posting, replying, liking, retweeting, following, blocking, bookmarking, deleting, and sending DMs. |
+
+## Error handling
+
+When MCP authentication fails, the tool does not run. The client receives a JSON-RPC error:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "error": {
+    "code": 401,
+    "message": "Missing MCP API token"
+  }
+}
+```
+
+When `twexapi_request` runs and the underlying Twexapi API returns a non-2xx response, preserve the MCP metadata and Twexapi error:
+
+```json
+{
+  "status_code": 403,
+  "endpoint": "get_global_trending_tweets",
+  "method": "GET",
+  "path": "/twitter/global-trending/tweets",
+  "result": {
+    "detail": "Credits exhausted or action not allowed."
+  }
+}
+```
+
+| Status | Meaning |
+| --- | --- |
+| `401` | MCP authentication failed before the tool ran; check `x-api-key` or Bearer auth. |
+| `403` | The API key is unavailable, credits are exhausted, or the action is not allowed. |
+| `429` | Rate limit exceeded. Retry after the limit window. |
+| `5xx` | Service-side failure or upstream X/Twitter fetch issue. |

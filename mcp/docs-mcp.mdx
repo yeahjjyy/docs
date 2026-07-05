@@ -1,0 +1,258 @@
+---
+title: "Docs MCP server"
+description: "Search Twexapi documentation from AI tools via a Mintlify-hosted MCP server."
+---
+
+Twexapi documentation is available as an MCP server at `https://docs.twexapi.io/mcp`. AI tools can search the full docs site and retrieve indexed public pages during conversations. This is separate from the [Twexapi API MCP server](/mcp/overview) at `https://api.twexapi.io/mcp`, which interacts with live Twexapi API endpoints. The docs search tools require no authentication and do not call live Twexapi APIs.
+
+<Note>
+  `https://docs.twexapi.io/mcp` is an MCP transport endpoint, not a browser page. Opening it with a normal `GET` request can return a JSON-RPC method error. MCP clients should connect to the same URL and call MCP methods such as `tools/list`.
+</Note>
+
+## Docs MCP Server
+
+Search docs and read indexed public pages at `https://docs.twexapi.io/mcp`. No auth required. Free. Some clients may also show Mintlify's `submit_feedback` tool for documentation feedback.
+
+## API MCP Server
+
+Interact with X/Twitter data at `https://api.twexapi.io/mcp`. Use an API key or OAuth 2.1. Calls cost credits according to the underlying endpoint.
+
+## Agent route checklist
+
+### Read docs first
+
+Use Docs MCP at `https://docs.twexapi.io/mcp` for public docs, API parameters, examples, error codes, SDK guidance, and no-auth page retrieval.
+
+### Run account actions
+
+Use API MCP at `https://api.twexapi.io/mcp` for live X/Twitter reads, writes, searches, trends, extractions, communities, lists, DMs, articles, or timeline jobs. Authenticate with an API key or OAuth 2.1.
+
+### Persist outside chat
+
+Use REST or generated SDKs when a backend must own retries, cursor storage, file downloads, queues, scheduled jobs, or batch orchestration.
+
+### Hand off results
+
+Store the endpoint path, request parameters, returned IDs, `has_more`, `next_cursor`, export route, charged credits, or webhook replay route before ending the agent run.
+
+## Quick connect
+
+Use the contextual menu at the top of any docs page to connect instantly:
+
+- Copy MCP Server URL - copies `https://docs.twexapi.io/mcp` to your clipboard
+- Copy MCP Install Command - copies the `npx add-mcp` install command
+- Connect to Cursor - installs the docs MCP server in Cursor
+- Connect to VS Code - installs the docs MCP server in VS Code
+
+## Setup
+
+### Web and terminal clients
+
+- [Claude.ai](#claude-ai)
+- [Claude Code](#claude-code)
+- [Codex CLI](#codex-cli)
+
+<a id="claude-ai"></a>
+
+#### Claude.ai
+
+1. Go to [Settings > Connectors](https://claude.ai/settings/connectors) in Claude.
+2. Select **Add custom connector**.
+3. Enter:
+   - Name: `Twexapi Docs`
+   - URL: `https://docs.twexapi.io/mcp`
+4. Select **Add**.
+5. In any chat, click the attachments button and select **Twexapi Docs**.
+
+<a id="claude-code"></a>
+
+#### Claude Code
+
+Add the docs MCP server:
+
+```bash
+claude mcp add --transport http twexapi-docs https://docs.twexapi.io/mcp
+```
+
+Verify with:
+
+```bash
+claude mcp list
+```
+
+<a id="codex-cli"></a>
+
+#### Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.twexapi_docs]
+url = "https://docs.twexapi.io/mcp"
+```
+
+### Editor clients
+
+- [Cursor](#cursor)
+- [VS Code](#vs-code)
+- [Windsurf](#windsurf)
+- [OpenCode](#opencode)
+
+<a id="cursor"></a>
+
+#### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project):
+
+```json
+{
+  "mcpServers": {
+    "twexapi-docs": {
+      "url": "https://docs.twexapi.io/mcp"
+    }
+  }
+}
+```
+
+<a id="vs-code"></a>
+
+#### VS Code
+
+Add to `.vscode/mcp.json` (project) or use **MCP: Open User Configuration** (global):
+
+```json
+{
+  "servers": {
+    "twexapi-docs": {
+      "type": "http",
+      "url": "https://docs.twexapi.io/mcp"
+    }
+  }
+}
+```
+
+<a id="windsurf"></a>
+
+#### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "twexapi-docs": {
+      "serverUrl": "https://docs.twexapi.io/mcp"
+    }
+  }
+}
+```
+
+<a id="opencode"></a>
+
+#### OpenCode
+
+Add to `opencode.json`:
+
+```json
+{
+  "mcp": {
+    "twexapi-docs": {
+      "type": "remote",
+      "url": "https://docs.twexapi.io/mcp"
+    }
+  }
+}
+```
+
+## Using both MCP servers
+
+For the best experience, connect both:
+
+1. Docs MCP (`docs.twexapi.io/mcp`) - the AI searches documentation to understand API parameters, error codes, and usage patterns.
+2. API MCP (`api.twexapi.io/mcp`) - the AI executes authenticated actions such as searches, lookups, trends, extractions, and write operations.
+
+The AI decides which server to query based on context. A question about request parameters should hit the docs server. A request to fetch live X/Twitter data should hit the API server.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http twexapi-docs https://docs.twexapi.io/mcp
+claude mcp add --transport http twexapi https://api.twexapi.io/mcp --header "x-api-key:twexapi_YOUR_KEY_HERE"
+```
+
+### Cursor
+
+```json
+{
+  "mcpServers": {
+    "twexapi-docs": {
+      "url": "https://docs.twexapi.io/mcp"
+    },
+    "twexapi": {
+      "url": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+### VS Code
+
+```json
+{
+  "servers": {
+    "twexapi-docs": {
+      "type": "http",
+      "url": "https://docs.twexapi.io/mcp"
+    },
+    "twexapi": {
+      "type": "http",
+      "url": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+## Available tools
+
+Mintlify generates docs tool names from the site name. After deploying this docs configuration with `name` set to `twexapi`, the docs MCP server exposes:
+
+| Tool | Purpose |
+| --- | --- |
+| `search_twexapi` | Search indexed Twexapi documentation by endpoint, parameter, error code, workflow, or guide topic. |
+| `query_docs_filesystem_twexapi` | Read indexed documentation files and inspect exact page content. |
+| `submit_feedback` | Send page-level documentation feedback when supported by the client. |
+
+<Tip>
+  The current production deployment may still return `search_twexapi_io` and `query_docs_filesystem_twexapi_io` until the updated `docs.json` is deployed. After deployment, `tools/list` should return `search_twexapi` and `query_docs_filesystem_twexapi`.
+</Tip>
+
+## What gets searched
+
+The docs MCP server indexes public Twexapi documentation:
+
+- API reference operations and request schemas
+- Authentication, rate limits, errors, and billing guidance
+- MCP server setup and tools reference
+- Framework guides for LangChain, CrewAI, Pydantic AI, Google ADK, Haystack, Mastra, no-code tools, and workflow platforms
+- Workflow guides for search, profiles, trends, articles, communities, lists, timelines, and extractions
+- `llms.txt` and other Mintlify-generated documentation indexes
+
+## Example prompts
+
+```txt
+Use Twexapi Docs MCP to find the authentication guide, then explain how to configure the API MCP server with x-api-key.
+```
+
+```txt
+Search the Twexapi docs for advanced search parameters, then tell me which API MCP call should be used for recent tweets about AI agents.
+```
+
+```txt
+Find the docs for article Markdown fetches and generate a minimal Python example using the documented request shape.
+```

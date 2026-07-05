@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "twexapi.io",
+  "name": "twexapi",
   "colors": {
     "primary": "#1DA1F2",
     "light": "#60CEFF",
@@ -15,6 +15,34 @@
         "pages": [
           "index",
           "authentication"
+        ]
+      },
+      {
+        "group": "MCP Server",
+        "pages": [
+          "mcp/overview",
+          "mcp/tools",
+          "mcp/agent-handoff",
+          "mcp/docs-mcp"
+        ]
+      },
+      {
+        "group": "Framework Guides",
+        "pages": [
+          "guides/langchain",
+          "guides/crewai",
+          "guides/pydantic-ai",
+          "guides/google-adk",
+          "guides/haystack",
+          "guides/microsoft-agent-framework",
+          "guides/mastra",
+          "guides/no-code-workflow-handoff",
+          "guides/n8n",
+          "guides/zapier",
+          "guides/make",
+          "guides/pipedream",
+          "guides/prefect",
+          "guides/composio-migration"
         ]
       },
       {

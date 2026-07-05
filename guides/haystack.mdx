@@ -1,0 +1,148 @@
+---
+title: "Haystack"
+description: "Use Twexapi MCP outputs as Haystack documents for RAG and analysis."
+---
+
+Haystack is a good fit when X/Twitter data becomes part of a retrieval pipeline. Use a small MCP collection step, then convert rows into Haystack `Document` objects.
+
+## Prerequisites
+
+- Python 3.10+
+- A Twexapi API key
+- Haystack installed in your retrieval pipeline
+
+## Install
+
+```bash
+pip install haystack-ai mcp python-dotenv
+```
+
+## MCP collection step
+
+1. Call Twexapi MCP with a focused task, such as searching tweets or loading a thread.
+2. Convert returned rows into `Document` objects.
+3. Add metadata fields like `tweet_id`, `author_username`, `created_at`, `route_used`, and `next_cursor`.
+4. Write documents into your Haystack store.
+
+## Example handoff shape
+
+```json
+{
+  "route_used": "/twitter/advanced_search",
+  "query": "AI agents",
+  "has_more": true,
+  "next_cursor": "cursor_123",
+  "tweets": [
+    {
+      "tweet_id": "1803006263529541838",
+      "author_username": "openai",
+      "created_at": "2026-07-02T10:00:00Z",
+      "text": "Example tweet text"
+    }
+  ]
+}
+```
+
+## Convert to documents
+
+```python
+from haystack import Document
+
+
+def tweets_to_documents(handoff: dict) -> list[Document]:
+    return [
+        Document(
+            content=row["text"],
+            meta={
+                "tweet_id": row["tweet_id"],
+                "author_username": row.get("author_username"),
+                "created_at": row.get("created_at"),
+                "route_used": handoff.get("route_used"),
+                "query": handoff.get("query"),
+                "next_cursor": handoff.get("next_cursor"),
+            },
+        )
+        for row in handoff["tweets"]
+    ]
+```
+
+## Tweet search
+
+Use MCP for endpoint discovery and collection, then hand the normalized JSON into your Haystack pipeline.
+
+```txt
+Use Twexapi MCP to search recent X posts about "haystack ai".
+Call explore first. Return JSON with route_used, query, has_more, next_cursor, and tweets.
+Each tweet must include tweet_id, author_username, created_at, text, public_url, and engagement metrics.
+Do not call write endpoints.
+```
+
+## User timeline
+
+For timeline retrieval, ask the agent to preserve a stable user identity and cursor.
+
+```txt
+Use Twexapi MCP to fetch recent timeline posts from @openai.
+Return JSON with route_used, username, user_id if available, has_more, next_cursor, and tweets.
+Each tweet must include tweet_id, full_text or text, created_at, and author fields.
+```
+
+## Pagination
+
+Store `has_more` and `next_cursor` separately from the embedded documents. Do not embed cursors into vector content; keep them in pipeline state so the next run can resume without changing indexed text.
+
+```python
+checkpoint = {
+    "route_used": handoff["route_used"],
+    "query": handoff.get("query"),
+    "has_more": handoff.get("has_more", False),
+    "next_cursor": handoff.get("next_cursor"),
+}
+```
+
+## Document mapping
+
+| Haystack field | Twexapi source |
+| --- | --- |
+| `Document.content` | Tweet text, article Markdown, or profile description |
+| `meta.tweet_id` | `tweet_id` |
+| `meta.author_username` | `author_username` or `author_screen_name` |
+| `meta.created_at` | `created_at` |
+| `meta.url` | Public X URL when returned, or a URL built from `tweet_id` |
+| `meta.route_used` | MCP selected route |
+| `meta.next_cursor` | Cursor checkpoint for the next collection run |
+
+## Agent prompt
+
+```txt
+Use Twexapi MCP to search recent posts about "AI agents".
+Return compact JSON with route_used, query, has_more, next_cursor, and tweets.
+Each tweet must include tweet_id, author_username, created_at, and text.
+Do not call write endpoints.
+```
+
+## Async usage
+
+When your pipeline has async stages, run the MCP collection outside the synchronous Haystack pipeline and pass the resulting documents into the async branch.
+
+```python
+async def collect_documents(agent) -> list[Document]:
+    handoff = await agent.run("Collect recent posts about AI agents as strict JSON.")
+    return tweets_to_documents(handoff)
+```
+
+## Error handling
+
+Handle Twexapi errors before creating documents.
+
+| Status | Handling |
+| --- | --- |
+| `401` | Check the MCP `x-api-key` header or REST Bearer token. |
+| `403` | Check account access, credits, and write permissions. |
+| `429` | Store the cursor and retry after the rate-limit window. |
+| `5xx` | Retry the collection step, not the embedding step. |
+
+## Source
+
+- [Twexapi MCP tools reference](/mcp/tools)
+- [Agent MCP Handoff](/mcp/agent-handoff)

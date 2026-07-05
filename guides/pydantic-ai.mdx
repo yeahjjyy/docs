@@ -1,0 +1,126 @@
+---
+title: "Pydantic AI"
+description: "Connect Twexapi MCP tools to type-safe Pydantic AI agents."
+---
+
+Pydantic AI works well when the agent output needs a strict schema for downstream jobs, dashboards, or no-code workflow handoff.
+
+## Prerequisites
+
+- Python 3.10+
+- A Twexapi API key
+- An LLM API key supported by Pydantic AI
+
+## Install
+
+```bash
+pip install "pydantic-ai[mcp]" python-dotenv
+```
+
+## Full example
+
+```python
+import asyncio
+import os
+from pathlib import Path
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from pydantic import BaseModel
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPServerStreamableHTTP
+
+
+class TweetRow(BaseModel):
+    tweet_id: str
+    text: str
+    author_username: str
+    created_at: Optional[str] = None
+
+
+class SearchHandoff(BaseModel):
+    route_used: str
+    has_more: bool = False
+    next_cursor: Optional[str] = None
+    tweets: List[TweetRow]
+    summary: List[str]
+
+
+async def main():
+    load_dotenv()
+
+    server = MCPServerStreamableHTTP(
+        "https://api.twexapi.io/mcp",
+        headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+    )
+
+    agent = Agent(
+        "anthropic:claude-sonnet-4-20250514",
+        toolsets=[server],
+        output_type=SearchHandoff,
+        system_prompt=(
+            "Use Twexapi MCP. Call explore first, then twexapi_request with "
+            "a catalog path. Preserve IDs and cursors."
+        ),
+    )
+
+    result = await agent.run(
+        "Search recent tweets about AI agents and return a structured handoff."
+    )
+
+    Path("twexapi-pydantic-ai-handoff.json").write_text(
+        result.output.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+
+asyncio.run(main())
+```
+
+## When to use schemas
+
+Use a Pydantic output schema whenever another system will read the result. Good fields include `tweet_id`, `user_id`, `route_used`, `has_more`, `next_cursor`, and a normalized `rows` array.
+
+## Handoff checklist
+
+| Data type | Store |
+| --- | --- |
+| Tweet rows | `tweet_id`, `text`, `author_username`, `created_at`, `public_url`, engagement metrics |
+| User rows | `user_id`, `username`, `name`, `description`, `followers_count`, verification fields |
+| Pagination | `has_more`, `next_cursor`, original query, selected `path` |
+| Tool audit | `route_used`, `method`, `path`, `read_only` |
+| Write results | `tweet_id`, `write_action_id`, `status`, `charged_credits`, approval record |
+
+## Write actions
+
+For posting, replying, following, blocking, or other side-effecting endpoints, add a schema field such as `requires_human_confirmation: bool` and stop before calling `read_only: false` tools.
+
+```python
+class WritePlan(BaseModel):
+    action: str
+    endpoint: str
+    preview_text: str
+    requires_human_confirmation: bool = True
+```
+
+## Environment variables
+
+```txt .env
+TWEXAPI_API_KEY=twexapi_YOUR_KEY_HERE
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+```python
+server = MCPServerStreamableHTTP(
+    "https://api.twexapi.io/mcp",
+    headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+)
+```
+
+## Package versions
+
+| Package | Version |
+| --- | --- |
+| `pydantic-ai` | `0.8+` |
+| `pydantic` | `2.7+` |
+| `mcp` | `1.9+` |

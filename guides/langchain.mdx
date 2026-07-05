@@ -1,0 +1,193 @@
+---
+title: "LangChain"
+description: "Connect Twexapi MCP tools to LangChain and LangGraph agents."
+---
+
+Connect LangChain agents to `https://api.twexapi.io/mcp` so they can discover Twexapi endpoints with `explore` and call allowed API paths through `twexapi_request`.
+
+## Prerequisites
+
+- Python 3.10+
+- A Twexapi API key from the [dashboard](https://twexapi.io/dashboard)
+- An LLM API key for your LangChain model provider
+
+## Install
+
+```bash
+pip install langchain langchain-mcp-adapters langchain-anthropic langgraph python-dotenv
+```
+
+## Full example
+
+```python
+import asyncio
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+
+async def main():
+    load_dotenv()
+
+    client = MultiServerMCPClient(
+        {
+            "twexapi": {
+                "transport": "streamable_http",
+                "url": "https://api.twexapi.io/mcp",
+                "headers": {
+                    "x-api-key": os.environ["TWEXAPI_API_KEY"],
+                },
+            },
+        }
+    )
+
+    tools = await client.get_tools()
+
+    agent = create_agent(
+        "anthropic:claude-sonnet-4-20250514",
+        tools,
+        system_prompt=(
+            "You help users interact with X/Twitter data through Twexapi. "
+            "Always call explore before twexapi_request, preserve IDs and cursors, "
+            "and ask for confirmation before read_only: false actions."
+        ),
+    )
+
+    prompt = (
+        "Search recent X posts about AI agents. Return compact JSON with "
+        "route_used, tweets[{tweet_id,text,author_username,created_at}], "
+        "has_more, next_cursor, and a 5-bullet summary."
+    )
+
+    response = await agent.ainvoke(
+        {"messages": [{"role": "user", "content": prompt}]}
+    )
+
+    Path("twexapi-langchain-handoff.json").write_text(
+        str(response["messages"][-1].content),
+        encoding="utf-8",
+    )
+
+
+asyncio.run(main())
+```
+
+LangChain loads the remote MCP tools with `MultiServerMCPClient`. The agent should call `explore` first, then call `twexapi_request` with an exact method and relative path from the catalog.
+
+## Handoff checklist
+
+Store durable fields from MCP responses so later workflow steps do not depend on chat history.
+
+| Data type | Store |
+| --- | --- |
+| Tweets | `tweet_id`, `text`, `author_username`, `created_at`, `has_more`, `next_cursor`, original query |
+| Profiles | `user_id`, `username`, `name`, `description`, `followers_count`, source lookup |
+| Trends | `name`, `rank`, `query`, `description`, requested country, requested topic |
+| Extractions | `extraction_id`, `status`, `poll`, export format, source URL or tweet ID |
+| Writes | `tweet_id`, `write_action_id`, `status`, `charged_credits`, confirmation record |
+
+## LangGraph directly
+
+Use LangGraph when you want to own the tool loop.
+
+```python
+import asyncio
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+
+
+async def main():
+    load_dotenv()
+
+    model = init_chat_model("anthropic:claude-sonnet-4-20250514")
+    client = MultiServerMCPClient(
+        {
+            "twexapi": {
+                "transport": "streamable_http",
+                "url": "https://api.twexapi.io/mcp",
+                "headers": {"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+            },
+        }
+    )
+
+    tools = await client.get_tools()
+
+    def call_model(state: MessagesState):
+        return {"messages": model.bind_tools(tools).invoke(state["messages"])}
+
+    builder = StateGraph(MessagesState)
+    builder.add_node(call_model)
+    builder.add_node(ToolNode(tools))
+    builder.add_edge(START, "call_model")
+    builder.add_conditional_edges("call_model", tools_condition)
+    builder.add_edge("tools", "call_model")
+    graph = builder.compile()
+
+    result = await graph.ainvoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        "Look up @openai. Return compact JSON with username, "
+                        "name, user_id, description, followers_count, and route_used."
+                    ),
+                }
+            ]
+        }
+    )
+
+    Path("twexapi-langgraph-handoff.json").write_text(
+        str(result["messages"][-1].content),
+        encoding="utf-8",
+    )
+
+
+asyncio.run(main())
+```
+
+## Environment variables
+
+```txt .env
+TWEXAPI_API_KEY=twexapi_YOUR_KEY_HERE
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Multiple MCP servers
+
+Prefix server names when your agent connects to more than one MCP provider.
+
+```python
+client = MultiServerMCPClient(
+    {
+        "twexapi": {
+            "transport": "streamable_http",
+            "url": "https://api.twexapi.io/mcp",
+            "headers": {"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+        },
+        "docs": {
+            "transport": "streamable_http",
+            "url": "https://docs.twexapi.io/mcp",
+        },
+    },
+    tool_name_prefix=True,
+)
+```
+
+## Package versions
+
+| Package | Version |
+| --- | --- |
+| `langchain-mcp-adapters` | `0.2.2+` |
+| `langchain` | `1.0+` |
+| `langgraph` | `0.6+` |
+| `mcp` | `1.9+` |

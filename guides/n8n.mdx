@@ -1,0 +1,147 @@
+---
+title: "n8n"
+description: "Send Twexapi MCP handoff JSON into n8n workflows."
+---
+
+Use n8n when you want Twexapi research results to trigger database writes, Slack alerts, CRM updates, or scheduled follow-up jobs.
+
+## Prerequisites
+
+- A Twexapi API key
+- n8n Cloud or self-hosted n8n
+- A webhook URL for MCP handoff recipes
+- Optional Slack, Google Sheets, Airtable, or database credentials
+
+## API key credential
+
+Create a reusable n8n credential for Twexapi REST calls:
+
+| Field | Value |
+| --- | --- |
+| Authentication | Header Auth |
+| Header name | `Authorization` |
+| Header value | `Bearer YOUR_API_KEY` |
+| Base URL | `https://api.twexapi.io` |
+
+For MCP-capable AI Agent nodes, configure the MCP Client Tool with `https://api.twexapi.io/mcp` and header `x-api-key: YOUR_API_KEY`.
+
+## Pattern
+
+1. Create an n8n Webhook trigger.
+2. Ask an MCP-capable agent to return strict Twexapi handoff JSON.
+3. POST the JSON to the n8n webhook.
+4. Use Set, IF, Split Out, and HTTP Request nodes to process rows.
+
+## Webhook payload
+
+```json
+{
+  "query": "AI agents",
+  "route_used": "/twitter/advanced_search",
+  "has_more": true,
+  "next_cursor": "cursor_123",
+  "tweets": [
+    {
+      "tweet_id": "1803006263529541838",
+      "author_username": "openai",
+      "created_at": "2026-07-02T10:00:00Z",
+      "text": "Example tweet text"
+    }
+  ]
+}
+```
+
+## Suggested n8n nodes
+
+| Step | Node | Purpose |
+| --- | --- | --- |
+| 1 | Webhook | Receive MCP handoff JSON. |
+| 2 | IF | Stop if `tweets` is empty. |
+| 3 | Split Out | Process each tweet row. |
+| 4 | Database or Sheets | Upsert by `tweet_id`. |
+| 5 | HTTP Request | Continue through Twexapi REST if the workflow owns the next API call. |
+
+## Result handoff
+
+Use an Edit Fields node after each MCP or HTTP Request step when the next node only needs stable fields.
+
+| Source | Store as |
+| --- | --- |
+| Tweet ID | `tweet_id` |
+| Text | `text` |
+| Author username | `author_username` |
+| Created time | `created_at` |
+| Pagination cursor | `next_cursor` |
+| MCP route | `route_used` |
+
+## Recipe 1: AI agent X research with MCP
+
+<Steps>
+  <Step title="Add an AI Agent node">
+    Use your preferred chat model.
+  </Step>
+  <Step title="Add an MCP Client Tool">
+    Configure `https://api.twexapi.io/mcp` with `x-api-key`.
+  </Step>
+  <Step title="Prompt the agent">
+    Ask it to call `explore`, then `twexapi_request`, and return only JSON.
+  </Step>
+  <Step title="Route rows">
+    Split `tweets` and write each row to your destination.
+  </Step>
+</Steps>
+
+Suggested prompt:
+
+```txt
+Find recent posts about AI agents in fintech, group them by theme, and list 5 accounts worth monitoring.
+Return only JSON with route_used, tweets, has_more, and next_cursor.
+```
+
+## Recipe 2: Monitor-style Slack alert
+
+Use this when the workflow should alert a Slack channel after receiving a row from an MCP agent or a scheduled REST job.
+
+| Node | Purpose |
+| --- | --- |
+| Webhook Trigger | Receive Twexapi handoff JSON. |
+| Split Out | Iterate over `tweets`. |
+| Set | Format `author_username`, `text`, and `public_url`. |
+| Slack | Post the alert. |
+
+Slack message template:
+
+```txt
+@{{$json.author_username}}
+{{$json.text}}
+{{$json.public_url || "https://x.com/i/web/status/" + $json.tweet_id}}
+```
+
+## Recipe 3: Extraction to Google Sheets
+
+For larger follower or reply exports, let the agent choose the endpoint with MCP, then run the repeated pages through REST.
+
+| Sheet column | Twexapi field |
+| --- | --- |
+| Tweet ID | `tweet_id` |
+| Author | `author_username` |
+| Text | `text` |
+| Created At | `created_at` |
+| URL | `public_url` or `https://x.com/i/web/status/{tweet_id}` |
+
+## Direct REST continuation
+
+```txt
+GET https://api.twexapi.io/twitter/global-trending/tweets
+Authorization: Bearer YOUR_API_KEY
+```
+
+Keep MCP for agent discovery and handoff. Use REST for scheduled, deterministic n8n jobs.
+
+## Testing checklist
+
+- Use n8n Test Step on every HTTP Request node.
+- Confirm every REST request includes `Authorization: Bearer YOUR_API_KEY`.
+- Confirm every MCP Client Tool request includes `x-api-key`.
+- Confirm webhooks receive JSON, not prose.
+- On `429`, pause before retrying and preserve `next_cursor`.

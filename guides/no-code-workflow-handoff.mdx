@@ -1,0 +1,103 @@
+---
+title: "No-Code Workflow Handoff"
+description: "Move Twexapi MCP agent results into n8n, Zapier, Make, and Pipedream."
+---
+
+Most no-code platforms do not need to run the MCP session themselves. A reliable pattern is to let an MCP-capable agent collect data, then hand structured JSON to the workflow.
+
+## Prerequisites
+
+- A Twexapi API key
+- An MCP-capable agent or framework connected to `https://api.twexapi.io/mcp`
+- A webhook URL from n8n, Zapier, Make, Pipedream, or your internal workflow runner
+- A destination system such as Sheets, Airtable, Notion, Slack, a CRM, or a database
+
+## Recommended flow
+
+<Steps>
+  <Step title="Collect with an MCP-capable agent">
+    Use Claude Code, Cursor, Codex CLI, LangChain, Pydantic AI, or another MCP client connected to `https://api.twexapi.io/mcp`.
+  </Step>
+  <Step title="Return strict JSON">
+    Ask the agent for a stable schema with IDs, cursors, route names, and rows.
+  </Step>
+  <Step title="Send to the no-code tool">
+    Post the JSON to a webhook in n8n, Zapier, Make, Pipedream, or your internal workflow runner.
+  </Step>
+  <Step title="Continue through REST if needed">
+    Scheduled or high-volume jobs can call Twexapi REST directly with `Authorization: Bearer YOUR_API_KEY`.
+  </Step>
+</Steps>
+
+## Copy-paste agent prompt
+
+```txt
+Use Twexapi MCP to search recent X/Twitter posts about "AI agents".
+Call explore first, then twexapi_request.
+Return only valid JSON with:
+{
+  "route_used": "...",
+  "query": "AI agents",
+  "has_more": true,
+  "next_cursor": "...",
+  "tweets": [
+    {
+      "tweet_id": "...",
+      "author_username": "...",
+      "created_at": "...",
+      "text": "...",
+      "like_count": 0,
+      "reply_count": 0,
+      "retweet_count": 0
+    }
+  ]
+}
+Do not call write endpoints.
+```
+
+## Workflow mapping
+
+| JSON field | Common destination |
+| --- | --- |
+| `tweet_id` | Database primary key, dedupe key, CRM note reference |
+| `author_username` | CRM account field, Slack message label |
+| `created_at` | Sort key and reporting timestamp |
+| `next_cursor` | Workflow state for the next scheduled run |
+| `route_used` | Audit log and debugging field |
+
+## Result handoff
+
+Keep the workflow payload small and stable. Do not pass the full raw response to Slack messages, CRM notes, or spreadsheet rows unless you also archive it separately.
+
+| Row type | Required fields |
+| --- | --- |
+| Tweet search | `tweet_id`, `text`, `author_username`, `created_at`, `public_url`, `route_used` |
+| Profile lookup | `user_id`, `username`, `name`, `description`, `followers_count`, `verified` |
+| Trend rows | `name`, `rank`, `query`, requested `country`, requested `topic` |
+| Pagination | `has_more`, `next_cursor`, original query or source ID |
+| Write plan | `action`, `endpoint`, `preview`, `requires_human_confirmation` |
+
+## Recipe: Agent research to webhook
+
+1. Connect an AI agent to Twexapi MCP.
+2. Ask it for strict JSON using the prompt above.
+3. POST the JSON to your workflow webhook.
+4. Use the workflow tool's iterator or loop step over `tweets`.
+5. Upsert rows by `tweet_id`.
+
+## Recipe: Scheduled continuation
+
+For daily jobs, keep the first run agent-assisted and make later runs deterministic:
+
+1. Store `route_used`, request parameters, and `next_cursor`.
+2. Run scheduled calls through Twexapi REST with `Authorization: Bearer YOUR_API_KEY`.
+3. Stop when `has_more` is false or the workflow reaches its row limit.
+4. Send exceptions back to an agent only when the selected endpoint or query needs to change.
+
+## Testing checklist
+
+- Confirm the webhook receives valid JSON, not Markdown.
+- Confirm `tweet_id` or `user_id` is used for dedupe.
+- Confirm `next_cursor` is persisted outside chat history.
+- Confirm write actions are represented as plans until a human approves them.
+- Confirm API keys, cookies, and auth tokens are never sent to user-visible destinations.

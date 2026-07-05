@@ -1,0 +1,120 @@
+---
+title: "Mastra"
+description: "Connect TypeScript Mastra agents to Twexapi MCP."
+---
+
+Mastra works well for TypeScript agents that need a remote MCP tool provider for X/Twitter search, profiles, trends, and write workflows.
+
+## Prerequisites
+
+- Node.js 20+
+- A Twexapi API key
+- A model provider configured for Mastra
+
+## Install
+
+```bash
+npm install @mastra/core @mastra/mcp dotenv
+```
+
+## MCP server config
+
+```ts
+import "dotenv/config";
+import { MCPClient } from "@mastra/mcp";
+
+export const twexapiMcp = new MCPClient({
+  servers: {
+    twexapi: {
+      url: new URL("https://api.twexapi.io/mcp"),
+      requestInit: {
+        headers: {
+          "x-api-key": process.env.TWEXAPI_API_KEY!,
+        },
+      },
+    },
+  },
+});
+```
+
+## Full example
+
+```ts
+import { Agent } from "@mastra/core/agent";
+import { openai } from "@ai-sdk/openai";
+import { twexapiMcp } from "./mcp";
+
+const tools = await twexapiMcp.listTools();
+
+export const twexapiAgent = new Agent({
+  name: "twexapi-agent",
+  instructions: `
+    You help users interact with X/Twitter through Twexapi MCP.
+    Always call explore before twexapi_request.
+    Preserve tweet_id, user_id, route_used, has_more, and next_cursor.
+    Ask for approval before read_only: false actions.
+  `,
+  model: openai("gpt-4o-mini"),
+  tools,
+});
+
+const result = await twexapiAgent.generate(
+  "Search recent X posts about AI infrastructure. Return compact JSON with route_used, tweets, has_more, and next_cursor."
+);
+
+console.log(result.text);
+```
+
+## Agent prompt
+
+```txt
+Use Twexapi MCP to search recent X posts about "AI infrastructure".
+Call explore first, then twexapi_request.
+Return JSON with route_used, tweets[{tweet_id,text,author_username,created_at}], has_more, next_cursor, and top accounts.
+```
+
+## Handoff fields
+
+When Mastra passes results into another workflow, keep these fields stable:
+
+| Field | Why it matters |
+| --- | --- |
+| `tweet_id` | Required for replies, quote tweets, details, and audit links. |
+| `user_id` | Stable identity key when usernames change. |
+| `has_more` | Tells the next job whether pagination can continue. |
+| `next_cursor` | Checkpoint for scheduled follow-up runs. |
+| `route_used` | Makes tool selection auditable. |
+
+## Environment variables
+
+```txt .env
+TWEXAPI_API_KEY=twexapi_YOUR_KEY_HERE
+OPENAI_API_KEY=sk-...
+```
+
+## Multiple MCP servers
+
+Keep the Twexapi server name stable when the same agent also uses docs, browser, or database MCP servers.
+
+```ts
+export const mcp = new MCPClient({
+  servers: {
+    twexapi: {
+      url: new URL("https://api.twexapi.io/mcp"),
+      requestInit: {
+        headers: { "x-api-key": process.env.TWEXAPI_API_KEY! },
+      },
+    },
+    twexapiDocs: {
+      url: new URL("https://docs.twexapi.io/mcp"),
+    },
+  },
+});
+```
+
+## Package versions
+
+| Package | Version |
+| --- | --- |
+| `@mastra/core` | `0.10+` |
+| `@mastra/mcp` | `0.10+` |

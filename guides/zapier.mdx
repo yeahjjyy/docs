@@ -1,0 +1,84 @@
+---
+title: "Zapier"
+description: "Use Twexapi MCP output in Zapier automations."
+---
+
+Zapier is best for simple handoffs: send agent-collected Twexapi rows to a Zapier Catch Hook, then route them to Slack, Sheets, Airtable, HubSpot, or email.
+
+## Prerequisites
+
+- A Twexapi API key
+- A Zapier account with Webhooks by Zapier
+- An MCP-capable agent connected to `https://api.twexapi.io/mcp`
+- A destination app such as Slack, Google Sheets, Airtable, HubSpot, or Gmail
+
+## Setup
+
+<Steps>
+  <Step title="Create a Zapier webhook">
+    Use Webhooks by Zapier and choose Catch Hook.
+  </Step>
+  <Step title="Ask your MCP agent for strict JSON">
+    Include `tweet_id`, `author_username`, `text`, `created_at`, `route_used`, and `next_cursor`.
+  </Step>
+  <Step title="POST the handoff JSON">
+    Send the agent result to the Zapier webhook URL.
+  </Step>
+  <Step title="Map fields">
+    Use `tweet_id` as the dedupe key and map text fields into your destination app.
+  </Step>
+</Steps>
+
+## Agent prompt
+
+```txt
+Use Twexapi MCP to find 10 recent tweets from @openai that mention AI.
+Return only JSON with route_used, has_more, next_cursor, and tweets.
+Each tweet must include tweet_id, author_username, text, created_at, and public_url.
+Do not call write endpoints.
+```
+
+## Zapier field mapping
+
+| Twexapi field | Zapier use |
+| --- | --- |
+| `tweet_id` | Deduplication key |
+| `public_url` | Link in Slack, Gmail, or CRM |
+| `text` | Message body |
+| `author_username` | Sender or account field |
+| `next_cursor` | Stored value for manual follow-up |
+
+## Private integration blueprint
+
+If you package Twexapi as a private Zapier integration, start with a small reliable surface.
+
+| Resource | Actions |
+| --- | --- |
+| Tweets | Search tweets, get tweet, create tweet after approval |
+| Users | Get user, search users |
+| Trends | Get countries, topics, and trending tweets |
+| Followers | Get latest followers, get cursor page |
+| Articles | Fetch article, fetch article Markdown |
+
+Use REST for packaged actions and MCP for agent-driven discovery workflows.
+
+## REST action example
+
+```txt
+POST https://api.twexapi.io/twitter/advanced_search
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "searchTerms": ["AI agents lang:en"],
+  "maxItems": 20,
+  "sortBy": "Latest"
+}
+```
+
+## Testing checklist
+
+- Test the Catch Hook with a real Twexapi handoff payload.
+- Use `tweet_id` as the dedupe key before writing to a destination app.
+- Store `next_cursor` in Storage by Zapier if a later Zap should continue pagination.
+- Keep write actions as drafts until a human approves the final text.

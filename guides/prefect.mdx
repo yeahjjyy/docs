@@ -1,0 +1,126 @@
+---
+title: "Prefect"
+description: "Schedule Twexapi MCP-assisted collection workflows with Prefect."
+---
+
+Use Prefect when the agent helps design or run a collection workflow, but scheduled execution needs durable state and retries.
+
+## Prerequisites
+
+- Python 3.10+
+- A Twexapi API key
+- A Prefect deployment or local flow runner
+- Storage for state such as `next_cursor`, `last_success_at`, and selected endpoint path
+
+## Pattern
+
+- Use MCP during planning and ad-hoc collection.
+- Persist the selected endpoint path, query parameters, and pagination state.
+- Run scheduled collection through Prefect tasks.
+- Use Twexapi REST directly for deterministic scheduled runs.
+
+## Flow skeleton
+
+```python
+import os
+import requests
+from prefect import flow, task
+
+
+@task(retries=3, retry_delay_seconds=30)
+def fetch_trending_tweets(country: str, topic: str, content: str, count: int = 20):
+    response = requests.get(
+        "https://api.twexapi.io/twitter/global-trending/tweets",
+        headers={"Authorization": f"Bearer {os.environ['TWEXAPI_API_KEY']}"},
+        params={
+            "country": country,
+            "topic": topic,
+            "content": content,
+            "count": count,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+@flow
+def ai_trends_flow():
+    data = fetch_trending_tweets("united-states", "technology", "AI")
+    return data
+```
+
+## MCP planning prompt
+
+```txt
+Use Twexapi MCP explore to choose the best endpoint for daily AI trend collection.
+Return the exact method, relative path, query parameters, pagination fields, expected response fields, and retry guidance.
+Do not execute write endpoints.
+```
+
+## Handoff payload
+
+Ask the planning agent to return this payload, then store it in Prefect variables or your own config.
+
+```json
+{
+  "route_used": "/twitter/global-trending/tweets",
+  "method": "GET",
+  "query": {
+    "country": "united-states",
+    "topic": "technology",
+    "content": "AI",
+    "count": 20
+  },
+  "pagination": {
+    "has_more": false,
+    "next_cursor": null
+  },
+  "auth": {
+    "header": "Authorization: Bearer TWEXAPI_API_KEY"
+  }
+}
+```
+
+## State to persist
+
+| State | Purpose |
+| --- | --- |
+| `path` | Stable endpoint chosen by the agent. |
+| `query` | Scheduled job parameters. |
+| `next_cursor` | Resume pagination. |
+| `last_success_at` | Recovery after failures. |
+| `route_used` | Audit trail. |
+
+## Deployment recipe
+
+<Steps>
+  <Step title="Plan with MCP">
+    Ask an agent to use `explore` and return the exact method, relative path, and parameters.
+  </Step>
+  <Step title="Codify the route">
+    Store the selected endpoint in Prefect variables or your own config.
+  </Step>
+  <Step title="Run with REST">
+    Use deterministic REST calls inside Prefect tasks.
+  </Step>
+  <Step title="Persist state">
+    Save `next_cursor`, row counts, and last successful run time after every page.
+  </Step>
+</Steps>
+
+## Error handling
+
+| Status | Prefect behavior |
+| --- | --- |
+| `401` | Fail fast and alert; the API key is missing or invalid. |
+| `403` | Pause the deployment until credits or permissions are fixed. |
+| `429` | Retry with delay and keep the same cursor. |
+| `5xx` | Retry the task; do not advance `next_cursor` until success. |
+
+## Testing checklist
+
+- Run the flow locally with `count=5`.
+- Verify logs include the selected `path` and request parameters.
+- Verify state persists after each successful page.
+- Verify retries do not duplicate rows because `tweet_id` or `user_id` is used as a primary key.

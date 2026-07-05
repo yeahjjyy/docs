@@ -1,0 +1,132 @@
+---
+title: "CrewAI"
+description: "Build multi-agent X/Twitter research crews with Twexapi MCP."
+---
+
+Use CrewAI when you want separate agents for collection, analysis, and reporting while sharing one Twexapi MCP connection.
+
+## Prerequisites
+
+- Python 3.10+
+- A Twexapi API key from the [dashboard](https://twexapi.io/dashboard)
+- An LLM API key supported by CrewAI
+
+## Install
+
+```bash
+pip install crewai python-dotenv
+```
+
+## Full example
+
+```python
+import os
+from pathlib import Path
+
+from crewai import Agent, Crew, Process, Task
+from crewai.mcp import MCPServerHTTP
+from dotenv import load_dotenv
+
+load_dotenv()
+
+twexapi_mcp = MCPServerHTTP(
+    url="https://api.twexapi.io/mcp",
+    headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+)
+
+researcher = Agent(
+    role="X Research Analyst",
+    goal="Collect structured public X/Twitter data with Twexapi MCP",
+    backstory="A careful analyst who preserves IDs, cursors, and route names.",
+    mcps=[twexapi_mcp],
+)
+
+task = Task(
+    description=(
+        "Search recent tweets about AI agents. Use explore first. Return compact JSON "
+        "with route_used, tweets[{tweet_id,text,author_username,created_at}], "
+        "has_more, next_cursor, and key influencers."
+    ),
+    expected_output="Compact JSON with tweet rows, pagination state, and influencer notes.",
+    agent=researcher,
+)
+
+crew = Crew(
+    agents=[researcher],
+    tasks=[task],
+    process=Process.sequential,
+    verbose=True,
+)
+
+result = crew.kickoff()
+Path("twexapi-crewai-handoff.json").write_text(str(result), encoding="utf-8")
+```
+
+## Multi-agent crew
+
+Give only the data-collection agents Twexapi access. Downstream agents can work from the handoff JSON.
+
+```python
+analyst = Agent(
+    role="Engagement Analyst",
+    goal="Find patterns in tweet rows and profile rows",
+    backstory="Transforms structured social data into concise findings.",
+)
+
+writer = Agent(
+    role="Report Writer",
+    goal="Write a short executive summary from the analyst output",
+    backstory="Creates readable summaries without inventing missing metrics.",
+)
+```
+
+## Handoff checklist
+
+- Preserve `tweet_id`, `user_id`, `author_username`, `created_at`, and source query.
+- Preserve `has_more` and `next_cursor` for every paginated call.
+- Store `route_used`, `method`, and `path` so the workflow can be audited.
+- Require human approval before any `read_only: false` action.
+
+## Tool filtering
+
+When a CrewAI role should only discover endpoints, limit that agent to `explore`. Give `twexapi_request` only to agents that are allowed to make authenticated API calls.
+
+```python
+from crewai.mcp import MCPServerHTTP
+from crewai.mcp.filters import create_static_tool_filter
+
+read_only_catalog = MCPServerHTTP(
+    url="https://api.twexapi.io/mcp",
+    headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+    tool_filter=create_static_tool_filter(
+        allowed_tool_names=["explore"],
+    ),
+)
+```
+
+For production research crews, keep write-capable work in a separate task that asks for explicit approval before any `read_only: false` call.
+
+## Environment variables
+
+```txt .env
+TWEXAPI_API_KEY=twexapi_YOUR_KEY_HERE
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+```python
+import os
+from crewai.mcp import MCPServerHTTP
+
+twexapi_mcp = MCPServerHTTP(
+    url="https://api.twexapi.io/mcp",
+    headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+)
+```
+
+## Package versions
+
+| Package | Version |
+| --- | --- |
+| `crewai` | `1.0+` |
+| `mcp` | `1.9+` |

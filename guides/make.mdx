@@ -1,0 +1,72 @@
+---
+title: "Make"
+description: "Route Twexapi MCP handoff JSON through Make scenarios."
+---
+
+Make works well for visual routing after an agent has already collected data through Twexapi MCP.
+
+## Prerequisites
+
+- A Twexapi API key
+- A Make scenario with a Custom webhook
+- An MCP-capable agent connected to Twexapi MCP
+- A destination module such as Sheets, Airtable, Notion, Slack, or Data store
+
+## Scenario
+
+1. Add a Custom webhook module.
+2. Send Twexapi handoff JSON from your MCP-capable agent.
+3. Use Iterator on the `tweets` array.
+4. Add filters for topics, authors, or engagement.
+5. Write rows to Airtable, Google Sheets, Notion, or a database.
+
+## Agent prompt
+
+```txt
+Use Twexapi MCP to fetch trending tweets for country united-states, topic technology, content AI.
+Return only JSON with route_used, country, topic, content, has_more, next_cursor, and tweets.
+Each tweet must include tweet_id, author_username, text, created_at, like_count, reply_count, and retweet_count.
+```
+
+## Iterator schema
+
+```json
+{
+  "tweet_id": "1803006263529541838",
+  "author_username": "openai",
+  "text": "Example tweet text",
+  "created_at": "2026-07-02T10:00:00Z",
+  "like_count": 10,
+  "reply_count": 2,
+  "retweet_count": 3
+}
+```
+
+## Direct REST continuation
+
+For scheduled scenarios, call Twexapi REST directly from Make's HTTP module and store `next_cursor` in a Make data store.
+
+## HTTP module setup
+
+| Field | Value |
+| --- | --- |
+| Method | `POST` or `GET` from the selected endpoint |
+| URL | `https://api.twexapi.io` plus the relative path |
+| Header | `Authorization: Bearer YOUR_API_KEY` |
+| Body type | Raw JSON for POST requests |
+
+## Router branches
+
+| Branch | Condition | Action |
+| --- | --- | --- |
+| Empty results | `tweets` length is `0` | Stop quietly. |
+| High engagement | `like_count` above threshold | Send Slack alert. |
+| Continue page | `has_more` is `true` | Store `next_cursor`. |
+| Error | status is `401`, `403`, or `429` | Route to an ops notification. |
+
+## Testing checklist
+
+- Run once with a small `count`, such as `5`.
+- Confirm the Iterator receives one bundle per tweet.
+- Confirm `tweet_id` is used for dedupe before writing rows.
+- Confirm Make data store contains the latest `next_cursor`.

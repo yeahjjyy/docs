@@ -1,0 +1,398 @@
+---
+title: "MCP Server"
+description: "Connect AI agents to Twexapi via the Model Context Protocol."
+---
+
+# Connect AI Agents via MCP
+
+Twexapi runs a [Model Context Protocol](https://modelcontextprotocol.io) server that lets AI agents and development tools interact with your Twexapi account programmatically.
+
+This page covers the API MCP server at `https://api.twexapi.io/mcp` for authenticated API actions. For read-only documentation search, use the [Docs MCP server](/mcp/docs-mcp) at `https://docs.twexapi.io/mcp`.
+
+## Connection
+
+### Protocol
+
+HTTP with Streamable HTTP transport for MCP clients.
+
+### Endpoint
+
+Connect clients to:
+
+```txt
+https://api.twexapi.io/mcp
+```
+
+The API server accepts both `https://api.twexapi.io/mcp` and `https://api.twexapi.io/mcp/`. Use the no-slash URL in client configs unless a client explicitly normalizes it.
+
+### Authentication
+
+Use a Twexapi API key in `x-api-key` or an OAuth 2.1 Bearer token when OAuth is enabled for your workspace.
+
+MCP server discovery metadata is available at:
+
+```txt
+https://api.twexapi.io/.well-known/mcp.json
+```
+
+`GET /.well-known/mcp.json` returns the MCP registry server card JSON directly. `GET /.well-known/mcp/server-card.json` returns the same card for clients that read the nested server-card path.
+
+Registry-card clients receive a `streamable-http` remote for `https://api.twexapi.io/mcp` with API key authentication. Direct client examples below can send the same key with `x-api-key` when the client supports custom headers.
+
+<Note>
+  API-key clients should send `x-api-key` on the first request. Unauthenticated requests to `https://api.twexapi.io/mcp` return `401`.
+</Note>
+
+## Authentication
+
+The MCP server supports these authentication methods:
+
+- API key (`x-api-key` header): Used by Claude Code, Cursor, VS Code, Windsurf, Codex CLI, OpenCode, and Claude Desktop through remote bridges. Pass your key during the MCP handshake.
+- Bearer token (`Authorization: Bearer <token>`): Used by clients that prefer Authorization headers. This can be a Twexapi API key or an OAuth token when OAuth is enabled.
+
+Create your API key from the [Twexapi dashboard](https://twexapi.io/dashboard).
+
+## How it works
+
+The MCP server exposes 2 tools:
+
+### `explore`
+
+Search the Twexapi API catalog. This is a discovery tool: it returns endpoint names, methods, paths, categories, parameter schemas, examples, and safety flags.
+
+### `twexapi_request`
+
+Execute authenticated Twexapi API calls. Cost follows the underlying endpoint.
+
+The agent first searches with `explore`, then calls `twexapi_request` with the returned method and relative path. Auth is injected from the MCP request automatically.
+
+### `explore` tool
+
+Searches the in-memory API endpoint catalog. The call still requires MCP authentication through an API key or Bearer token.
+
+```ts
+interface EndpointInfo {
+  name: string;
+  method: string;
+  path: string;
+  category: string; // trending, search, users, tweets, followers, engagement, communities, lists, dm, articles, timeline, accounts, write
+  description: string;
+  read_only: boolean;
+  parameters_schema?: Record<string, unknown>;
+  example?: Record<string, unknown>;
+}
+```
+
+### `twexapi_request` tool
+
+Executes API calls against allowlisted Twexapi REST endpoints.
+
+```ts
+declare const twexapi_request: {
+  method: string;
+  path: string;
+  query?: Record<string, unknown>;
+  body?: unknown;
+};
+```
+
+Example call:
+
+```json
+{
+  "method": "GET",
+  "path": "/twitter/global-trending/countries"
+}
+```
+
+## MCP vs REST API
+
+### MCP Server
+
+Best for AI agents, IDE integrations, and natural language workflows. Connect to `https://api.twexapi.io/mcp` with `x-api-key` or Bearer auth. Agents use `explore` for endpoint search and `twexapi_request` for authenticated API calls.
+
+### REST API
+
+Best for backend services, automation scripts, and direct programmatic access. Call `https://api.twexapi.io/*` with `Authorization: Bearer <token>`. Use the API reference when you need fine-grained control over endpoints, pagination, response handling, or direct SDK code.
+
+Use MCP when you want an agent to interact with X/Twitter data through natural language. Use REST when you are building a production backend, scheduled job, or direct integration.
+
+## Setup
+
+### Web and terminal clients
+
+- [Claude.ai](#claude-ai)
+- [Claude Desktop](#claude-desktop)
+- [Claude Code](#claude-code)
+- [Codex CLI](#codex-cli)
+
+<a id="claude-ai"></a>
+
+#### Claude.ai
+
+Claude.ai can connect to remote MCP servers when MCP connectors are enabled for your workspace. Use `https://api.twexapi.io/mcp` as the server URL. OAuth-enabled workspaces can complete authentication in the browser; API-key clients should use `x-api-key`.
+
+<a id="claude-desktop"></a>
+
+#### Claude Desktop
+
+Claude Desktop only supports stdio transport. Use the `mcp-remote` npm package as a bridge:
+
+```json
+{
+  "mcpServers": {
+    "twexapi": {
+      "command": "npx",
+      "args": [
+        "mcp-remote@latest",
+        "https://api.twexapi.io/mcp",
+        "--header",
+        "x-api-key:twexapi_YOUR_KEY_HERE"
+      ]
+    }
+  }
+}
+```
+
+<a id="claude-code"></a>
+
+#### Claude Code
+
+Add to your `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "twexapi": {
+      "type": "http",
+      "url": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+<a id="codex-cli"></a>
+
+#### Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.twexapi]
+url = "https://api.twexapi.io/mcp"
+http_headers = { "x-api-key" = "twexapi_YOUR_KEY_HERE" }
+```
+
+### Editor clients
+
+- [Cursor](#cursor)
+- [VS Code](#vs-code)
+- [Windsurf](#windsurf)
+- [OpenCode](#opencode)
+
+<a id="cursor"></a>
+
+#### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project):
+
+```json
+{
+  "mcpServers": {
+    "twexapi": {
+      "url": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+<a id="vs-code"></a>
+
+#### VS Code
+
+Add to `.vscode/mcp.json` (project) or use **MCP: Open User Configuration** (global):
+
+```json
+{
+  "servers": {
+    "twexapi": {
+      "type": "http",
+      "url": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+<a id="windsurf"></a>
+
+#### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "twexapi": {
+      "serverUrl": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+<a id="opencode"></a>
+
+#### OpenCode
+
+Add to `opencode.json`:
+
+```json
+{
+  "mcp": {
+    "twexapi": {
+      "type": "remote",
+      "url": "https://api.twexapi.io/mcp",
+      "headers": {
+        "x-api-key": "twexapi_YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+### ChatGPT
+
+There are 3 ways to connect ChatGPT to Twexapi:
+
+**Option 1: Custom GPT**
+
+Create a Custom GPT and add Twexapi as an Action using the OpenAPI schema from your API deployment. Set authentication to API key header or Bearer token depending on your setup.
+
+**Option 2: Agents SDK**
+
+Use Streamable HTTP MCP from an agent runtime:
+
+```python
+from agents.mcp import MCPServerStreamableHttp
+
+async with MCPServerStreamableHttp(
+    url="https://api.twexapi.io/mcp",
+    headers={"x-api-key": "twexapi_YOUR_KEY_HERE"},
+    params={},
+) as twexapi:
+    # use Twexapi as a tool provider
+    pass
+```
+
+**Option 3: Developer Mode**
+
+When your ChatGPT environment supports MCP connectors, add Twexapi with `https://api.twexapi.io/mcp` as the endpoint. OAuth-enabled workspaces can complete authentication in the browser.
+
+## Example prompts
+
+Once connected, you can ask your AI agent things like:
+
+### Search and lookup
+
+- Search recent X posts about `AI agents` from the last 24 hours. Return the top 20 tweets with tweet ID, author, created time, likes, reposts, and a one-line summary.
+- Find recent tweets from `@elonmusk` that mention `Grok` or `AI`. Group the results by topic and include direct X links.
+- Read this tweet: `https://x.com/elonmusk/status/1803006263529541838`. Summarize the post, then pull the most relevant replies and show reply IDs.
+- Get similar tweets for tweet ID `1803006263529541838` and explain why each result is related.
+
+### User profiles and follows
+
+- Read `@openai` profile bio and return username, display name, user ID, location, follower count, and profile URL.
+- Search X users for `AI infrastructure`. Return 25 accounts with username, bio, follower count, and why they match.
+- Get the latest followers for `@elonmusk`, then identify which accounts mention AI, startups, or crypto in their bios.
+- Pull one cursor-paginated followers page for `@sama`, return the first 20 users, and preserve the `next_cursor` for the next run.
+- Check whether accounts `44196397`, `elonmusk`, and `openai` are verified or organization-affiliated.
+
+### Trends
+
+- Show all supported global trend countries, then fetch top trend topics for `united-states`.
+- Fetch trending tweets for `united-states` with topic `technology` and content tag `AI`. Return tweet IDs, authors, and engagement metrics.
+- Check whether `AI`, `Bitcoin`, or `Grok` is trending today in the United States. Explain the evidence from returned tweets.
+- Compare trending topics for `united-states`, `japan`, and `united-kingdom` and summarize what differs by region.
+
+### Extractions
+
+- Pull replies to `https://x.com/elonmusk/status/1803006263529541838`, sort them by relevance, and return reply ID, author, text, and like count.
+- List 50 users who retweeted tweet ID `1803006263529541838`. Return user ID, username, display name, and follower count if available.
+- Get quote tweets for tweet ID `1803006263529541838`, then classify quotes as supportive, critical, or neutral.
+- Extract the full thread for tweet ID `1803006263529541838` and turn it into a Markdown outline.
+- Get all tweets and replies for `@elonmusk` with a count of `20`, then separate original posts from replies.
+
+### Articles
+
+- Fetch X article `1803006263529541838` as Markdown and convert it into a 5-bullet executive brief.
+- Batch fetch X articles with IDs `1803006263529541838` and `1803006263529541839`; return title, author, publish time, and summary.
+- Read this X article as Markdown, extract all links, and produce a clean newsletter-style summary.
+
+### Communities and lists
+
+- Search X communities for `AI builders`. Return community ID, name, member count, and description.
+- Get the latest tweets from community ID `1234567890123456789` with tweet type `Latest` and target count `20`.
+- Search lists for `AI founders`. Return the top 10 lists with list ID, name, description, and member count.
+- Fetch members from list ID `987654321098765432`, include the next cursor, and format the result as a prospecting table.
+
+### X write actions
+
+- Post a tweet saying: `Just shipped v2.0 of our Twexapi integration. MCP setup now takes less than 2 minutes.`
+- Reply to tweet ID `1803006263529541838` with: `This is a useful example. I tested it through Twexapi MCP.`
+- Create a tweet with image URL `https://example.com/launch.png` and text: `New launch: Twexapi MCP now supports agent workflows.`
+- Draft, but do not send, a reply to `https://x.com/elonmusk/status/1803006263529541838` in a concise technical style.
+
+<Warning>
+  Write actions are marked `read_only: false`. Require explicit user confirmation before posting, replying, following, blocking, or performing any other side-effecting action.
+</Warning>
+
+### Account and usage
+
+- Explain why my MCP request to `/twitter/global-trending/tweets` returned `401`, and list the headers I should check.
+- Explain why my MCP request returned `403 No available credits!` and what I should do before retrying.
+- Explain why a high-volume followers extraction returned `429`, then propose a retry and pagination plan.
+- Decide whether this task should use MCP or direct REST: `pull 10,000 followers for @openai every morning and store them in my database`.
+
+## Framework guides
+
+Build agents with Twexapi MCP tools in your preferred framework:
+
+<CardGroup cols={2}>
+  <Card title="LangChain" icon="link" href="/guides/langchain">
+    Connect Twexapi MCP tools to LangChain and LangGraph agents.
+  </Card>
+  <Card title="CrewAI" icon="users" href="/guides/crewai">
+    Build research crews that share one Twexapi MCP connection.
+  </Card>
+  <Card title="Pydantic AI" icon="brackets-curly" href="/guides/pydantic-ai">
+    Use type-safe agents with Streamable HTTP MCP tools.
+  </Card>
+  <Card title="Google ADK" icon="sparkles" href="/guides/google-adk">
+    Add Twexapi tools to Gemini-powered ADK agents.
+  </Card>
+  <Card title="Mastra" icon="workflow" href="/guides/mastra">
+    Connect TypeScript agents to remote Twexapi MCP tools.
+  </Card>
+  <Card title="No-code workflows" icon="blocks" href="/guides/no-code-workflow-handoff">
+    Hand off agent outputs to n8n, Zapier, Make, and Pipedream.
+  </Card>
+</CardGroup>
+
+## AI agent skill
+
+The Twexapi skill gives AI coding agents deep knowledge of the Twexapi API without requiring an MCP connection. Install it to let your agent write API integrations, configure MCP connections, and use Twexapi best practices.
+
+```bash
+npx skills add yeahjjyy/twexapi-cli
+```

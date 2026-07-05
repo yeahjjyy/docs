@@ -1,0 +1,162 @@
+---
+title: "Google ADK"
+description: "Build Gemini agents that call Twexapi through MCP."
+---
+
+Use Google ADK when your agent runtime is Gemini-first and you want Twexapi to appear as a remote MCP toolset.
+
+## Prerequisites
+
+- Python 3.10+
+- A Twexapi API key
+- A Google AI API key
+
+## Install
+
+```bash
+pip install google-adk python-dotenv
+```
+
+## Full example
+
+```python
+import asyncio
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from google.adk.agents import LlmAgent
+from google.adk.runners import InMemoryRunner
+from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
+from google.genai import types
+
+
+async def main():
+    load_dotenv()
+
+    twexapi_toolset = McpToolset(
+        connection_params=StreamableHTTPConnectionParams(
+            url="https://api.twexapi.io/mcp",
+            headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+        )
+    )
+
+    agent = LlmAgent(
+        model="gemini-2.5-flash",
+        name="twexapi_agent",
+        instruction=(
+            "You help users interact with X/Twitter through Twexapi MCP. "
+            "Call explore first. Preserve tweet IDs, user IDs, cursors, and route_used."
+        ),
+        tools=[twexapi_toolset],
+    )
+
+    runner = InMemoryRunner(agent=agent, app_name="twexapi_app")
+    session = await runner.session_service.create_session(
+        app_name="twexapi_app",
+        user_id="user-1",
+    )
+
+    response_parts = []
+    async for event in runner.run_async(
+        user_id="user-1",
+        session_id=session.id,
+        new_message=types.Content(
+            role="user",
+            parts=[
+                types.Part(
+                    text=(
+                        "Fetch trending tweets for united-states with topic technology "
+                        "and content AI. Return tweet IDs, authors, engagement metrics, "
+                        "has_more, and next_cursor."
+                    )
+                )
+            ],
+        ),
+    ):
+        if event.content and event.content.parts:
+            response_parts.extend(part.text for part in event.content.parts if part.text)
+
+    Path("twexapi-adk-handoff.json").write_text(
+        "".join(response_parts),
+        encoding="utf-8",
+    )
+
+    await twexapi_toolset.close()
+
+
+asyncio.run(main())
+```
+
+## Multi-agent setup
+
+Give the data-collection sub-agent Twexapi tools. Keep writing and reporting agents separated so write approvals stay explicit.
+
+```python
+researcher = LlmAgent(
+    model="gemini-2.5-flash",
+    name="researcher",
+    instruction="Collect X/Twitter data through Twexapi MCP and return compact JSON.",
+    tools=[twexapi_toolset],
+)
+
+analyst = LlmAgent(
+    model="gemini-2.5-flash",
+    name="analyst",
+    instruction="Analyze structured tweet rows. Do not call external tools.",
+)
+```
+
+## Handoff checklist
+
+- Save `tweet_id`, `author_username`, `text`, and `created_at`.
+- Save `has_more` and `next_cursor` for follow-up calls.
+- Save the original prompt and the selected Twexapi `path`.
+
+## Dynamic headers
+
+Use dynamic headers when your ADK app serves multiple Twexapi accounts.
+
+```python
+from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
+
+
+def get_headers(context):
+    return {"x-api-key": context.state["twexapi_api_key"]}
+
+
+twexapi_toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.twexapi.io/mcp",
+    ),
+    header_provider=get_headers,
+)
+```
+
+## Tool filtering
+
+Expose only discovery tools to planning agents, then route execution through a narrower data-collection agent.
+
+```python
+planning_toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.twexapi.io/mcp",
+        headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+    ),
+    tool_filter=["explore"],
+)
+```
+
+## Environment variables
+
+```txt .env
+TWEXAPI_API_KEY=twexapi_YOUR_KEY_HERE
+GOOGLE_API_KEY=...
+```
+
+## Package versions
+
+| Package | Version |
+| --- | --- |
+| `google-adk` | `1.0+` |
+| `mcp` | `1.9+` |

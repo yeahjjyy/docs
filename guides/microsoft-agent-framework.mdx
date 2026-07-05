@@ -1,0 +1,126 @@
+---
+title: "Microsoft Agent Framework"
+description: "Use Twexapi MCP from Microsoft agent workflows."
+---
+
+Use Microsoft Agent Framework when you are building .NET or Python agent workflows and want Twexapi exposed as a remote tool source.
+
+## Prerequisites
+
+- A Twexapi API key
+- Python 3.10+ or a .NET agent host with MCP support
+- A model configured for your Microsoft agent runtime
+- Streamable HTTP MCP support in the agent host or a small bridge process
+
+## Install
+
+```bash
+pip install agent-framework mcp python-dotenv
+```
+
+## Full example
+
+```python
+import asyncio
+import os
+from pathlib import Path
+
+from agent_framework import ChatAgent, MCPStreamableHTTPTool
+from agent_framework.openai import OpenAIChatClient
+from dotenv import load_dotenv
+
+
+async def main():
+    load_dotenv()
+
+    mcp_tool = MCPStreamableHTTPTool(
+        name="twexapi",
+        url="https://api.twexapi.io/mcp",
+        headers={"x-api-key": os.environ["TWEXAPI_API_KEY"]},
+        description="Twexapi X/Twitter API tools exposed through MCP",
+    )
+
+    async with mcp_tool:
+        agent = ChatAgent(
+            chat_client=OpenAIChatClient(model_id="gpt-4o"),
+            name="twexapi_agent",
+            instructions=(
+                "You help users interact with X/Twitter via Twexapi. "
+                "Call explore first, then twexapi_request. Preserve IDs and cursors."
+            ),
+            tools=[mcp_tool],
+        )
+
+        response = await agent.run(
+            "Search for tweets about AI agents. Return compact JSON with "
+            "route_used, tweets[{tweet_id,text,author_username,created_at}], "
+            "has_more, and next_cursor."
+        )
+
+        Path("twexapi-agent-framework-handoff.json").write_text(
+            response.text,
+            encoding="utf-8",
+        )
+
+
+asyncio.run(main())
+```
+
+## MCP connection JSON
+
+```json
+{
+  "name": "twexapi",
+  "transport": "streamable-http",
+  "url": "https://api.twexapi.io/mcp",
+  "headers": {
+    "x-api-key": "twexapi_YOUR_KEY_HERE"
+  }
+}
+```
+
+## System instruction
+
+```txt
+You have access to Twexapi MCP tools.
+Call explore before twexapi_request.
+Use only relative paths returned by explore.
+Return tweet_id, user_id, author_username, route_used, has_more, and next_cursor.
+Ask for confirmation before read_only: false actions.
+```
+
+## Example task
+
+```txt
+Research current X/Twitter discussion about "AI coding agents".
+Use Twexapi MCP, collect 25 recent tweets, group them by theme, and return compact JSON.
+Include tweet_id, author_username, text, created_at, engagement metrics, route_used, has_more, and next_cursor.
+```
+
+## Handoff checklist
+
+- Store `tweet_id`, `text`, `author_username`, `created_at`, and engagement metrics.
+- Store `user_id`, `username`, and verification fields for profile workflows.
+- Store `has_more`, `next_cursor`, `method`, `path`, and `route_used`.
+- Stop before write actions unless a human approves the exact action.
+
+## Environment variables
+
+```txt .env
+TWEXAPI_API_KEY=twexapi_YOUR_KEY_HERE
+OPENAI_API_KEY=sk-...
+```
+
+## Production guidance
+
+- Use a per-environment API key instead of embedding keys in agent prompts.
+- Log MCP tool calls and the returned `path`.
+- Treat any write-capable endpoint as a human-approved step.
+- Persist cursors outside the conversation state.
+
+## Package versions
+
+| Package | Version |
+| --- | --- |
+| `agent-framework` | `0.2+` |
+| `mcp` | `1.9+` |
